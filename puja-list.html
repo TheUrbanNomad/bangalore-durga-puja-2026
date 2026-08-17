@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Bangalore Durga Puja Directory 2026</title>
+
+<!-- Load PapaParse for reading Google Sheets CSVs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+
+<style>
+  :root {
+    --ink: #2b1b12;
+    --accent: #b3202e;   /* Durga Puja Red */
+    --gold: #c99a2e;
+    --muted: #7a6a5f;
+    --bg: #e5e5e5;
+    --card-bg: #ffffff;
+    --shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  
+  body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    padding-bottom: 70px;
+  }
+
+  /* --- TOP UI & FILTERS CONTAINER --- */
+  .top-ui { position: sticky; top: 0; left: 0; right: 0; z-index: 1000; padding: 12px; background: var(--card-bg); box-shadow: var(--shadow); }
+  .header-card { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .menu-btn { background: none; border: none; font-size: 24px; color: var(--ink); cursor: pointer; padding: 0; margin-right: 12px; }
+  .header-title { flex-grow: 1; font-size: 16px; font-weight: 700; color: var(--ink); margin: 0; line-height: 1.2; }
+  .back-map-btn { font-size: 12px; font-weight: 600; color: #fff; background: var(--accent); padding: 6px 12px; border-radius: 20px; text-decoration: none; white-space: nowrap; }
+
+  /* --- FILTER CONTROLS --- */
+  .filter-section { display: flex; flex-direction: column; gap: 10px; }
+  .search-input { width: 100%; padding: 10px 16px; border: 1px solid #ddd; border-radius: 20px; font-size: 14px; outline: none; background: #fafafa; }
+  .search-input:focus { border-color: var(--accent); background: #fff; }
+  .dropdown-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .filter-select { flex: 1; min-width: 140px; padding: 10px 14px; border: 1px solid #ddd; border-radius: 20px; font-size: 13px; outline: none; background: #fff; color: var(--ink); cursor: pointer; }
+  .filter-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--muted); font-weight: 500; }
+  .filter-pills { display: flex; gap: 4px; }
+  .pill { border: 1px solid #ddd; background: #fff; padding: 4px 12px; border-radius: 14px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--ink); }
+  .pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .results-count { font-size: 12px; color: var(--muted); margin-top: 4px; font-weight: 500; }
+
+  /* --- DIRECTORY CONTAINER --- */
+  .directory-grid { padding: 12px; display: flex; flex-direction: column; gap: 12px; max-width: 600px; margin: 0 auto; }
+  .puja-card { background: var(--card-bg); border-radius: 12px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); display: flex; flex-direction: column; gap: 6px; }
+  .puja-card h3 { margin: 0; font-size: 17px; color: var(--ink); }
+  .puja-card .committee { font-size: 13px; color: var(--muted); font-weight: 500; }
+  .badge-row { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0; }
+  .badge { font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 600; }
+  .badge-public { background: #e8f5e9; color: #2e7d32; }
+  .badge-apartment { background: #fff3e0; color: #e65100; }
+  .badge-metro { background: #ede7f6; color: #512da8; }
+  .badge-area { background: #e3f2fd; color: #1565c0; }
+  .badge-theme { background: #fce4ec; color: #c2185b; }
+  .badge-pushpanjali { background: #e0f2f1; color: #00796b; }
+  .sponsored-tag { background: var(--gold); color: #fff; }
+  .puja-card p { margin: 2px 0; font-size: 13px; color: var(--muted); }
+  .inauguration-info { font-size: 13px; font-weight: 600; color: var(--accent); margin-top: 2px; }
+
+  .card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0f0f0; flex-wrap: wrap; gap: 8px; }
+  .parking-info { font-size: 12px; color: var(--muted); }
+  .btn-group { display: flex; gap: 6px; }
+  .gmaps-btn { background: var(--accent); color: #fff; text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+  .events-btn { background: #673ab7; color: #fff; text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+
+  /* --- STICKY FOOTER --- */
+  .footer-card { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(5px); padding: 10px; text-align: center; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 1000; }
+  .footer-title { font-size: 12px; font-weight: 700; color: var(--ink); margin: 0 0 2px 0; }
+  .footer-credit { font-size: 10px; color: var(--muted); margin: 0; }
+
+  /* --- SIDE MENU --- */
+  .side-menu { position: fixed; top: 0; left: -280px; width: 280px; height: 100%; background: #fff; z-index: 2000; box-shadow: 2px 0 12px rgba(0,0,0,0.2); transition: left 0.3s ease; padding: 24px 20px; }
+  .side-menu.open { left: 0; }
+  .menu-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1999; display: none; opacity: 0; transition: opacity 0.3s ease; }
+  .menu-overlay.open { display: block; opacity: 1; }
+  .close-btn { background: none; border: none; font-size: 28px; color: var(--ink); position: absolute; top: 16px; right: 20px; cursor: pointer; }
+  .side-menu h2 { margin: 0 0 24px 0; font-size: 18px; color: var(--accent); }
+  .side-menu a { display: block; padding: 12px 0; font-size: 16px; color: var(--ink); text-decoration: none; border-bottom: 1px solid #eee; font-weight: 500; }
+  #loading-state { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div id="side-menu" class="side-menu">
+  <button id="close-menu" class="close-btn">&times;</button>
+  <h2>Menu</h2>
+  <a href="index.html">🗺️ Interactive Metro Map</a>
+  <a href="puja-list.html">📋 Full Puja List</a>
+  <a href="cultural-events.html">🎭 Cultural Events</a>
+</div>
+<div id="menu-overlay" class="menu-overlay"></div>
+
+<div class="top-ui">
+  <div class="header-card">
+    <button id="hamburger-btn" class="menu-btn">☰</button>
+    <h1 class="header-title">Durga Puja Directory</h1>
+    <a href="index.html" class="back-map-btn">Map View</a>
+  </div>
+
+  <div class="filter-section">
+    <input type="text" id="search-box" class="search-input" placeholder="Search by Puja name, committee, or area..." />
+    <div class="dropdown-row">
+      <select id="area-select" class="filter-select"><option value="all">All Areas</option></select>
+    </div>
+    <div class="filter-group">
+      <span>On Metro Map:</span>
+      <div class="filter-pills" data-filter="metro">
+        <button class="pill active" data-val="all">All</button><button class="pill" data-val="yes">Yes</button><button class="pill" data-val="no">No</button>
+      </div>
+    </div>
+    <div class="filter-group">
+      <span>Pushpanjali Open to All:</span>
+      <div class="filter-pills" data-filter="pushpanjali">
+        <button class="pill active" data-val="all">All</button><button class="pill" data-val="yes">Yes</button><button class="pill" data-val="no">No</button>
+      </div>
+    </div>
+    <div id="results-counter" class="results-count">Showing 0 of 0 Pujas</div>
+  </div>
+</div>
+
+<div id="directory" class="directory-grid">
+  <div id="loading-state">⏳ Loading Puja directory from cloud...</div>
+</div>
+
+<div class="footer-card">
+  <p class="footer-title">🌟 Presented by [Title Sponsor]</p>
+  <p class="footer-credit">Powered by The Urban Nomad Productions</p>
+</div>
+
+<script>
+const sideMenu = document.getElementById('side-menu');
+const menuOverlay = document.getElementById('menu-overlay');
+document.getElementById('hamburger-btn').addEventListener('click', () => { sideMenu.classList.add('open'); menuOverlay.classList.add('open'); });
+document.getElementById('close-menu').addEventListener('click', closeMenu);
+menuOverlay.addEventListener('click', closeMenu);
+function closeMenu() { sideMenu.classList.remove('open'); menuOverlay.classList.remove('open'); }
+
+// DATA LINKS (Tabs 2 & 3)
+const PUJA_DIR_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdq1D4JPdrIFCQaGXT1mMZ9J_Nj7bmx-l82wUpro-WNRfxxIcL5xgFEYom46KZMmNdRsdPGkHNDq99/pub?gid=358032128&single=true&output=csv";
+const EVENTS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdq1D4JPdrIFCQaGXT1mMZ9J_Nj7bmx-l82wUpro-WNRfxxIcL5xgFEYom46KZMmNdRsdPGkHNDq99/pub?gid=265761171&single=true&output=csv"; 
+
+let allPujas = [];
+let eventsSet = new Set(); 
+let activeFilters = { search: '', area: 'all', metro: 'all', pushpanjali: 'all' };
+
+function slugify(text) {
+  return text.toString().toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w\-]+/g, '').replace(/\-\-+/g, '-');
+}
+
+function fetchCSV(url) {
+  return new Promise((resolve, reject) => {
+    Papa.parse(url, { download: true, header: true, skipEmptyLines: true, complete: (results) => resolve(results.data), error: (err) => reject(err) });
+  });
+}
+
+Promise.all([fetchCSV(PUJA_DIR_CSV_URL), fetchCSV(EVENTS_CSV_URL)])
+  .then(([dirData, eventsData]) => {
+    allPujas = dirData;
+    
+    eventsData.forEach(row => {
+      const pName = (row['Puja Name'] || '').trim().toLowerCase();
+      if(pName) eventsSet.add(pName);
+    });
+
+    populateDropdowns(allPujas);
+    applyFilters();
+  })
+  .catch(err => { document.getElementById('directory').innerHTML = `<div id="loading-state" style="color:red;">Error loading directory data.</div>`; });
+
+function populateDropdowns(pujas) {
+  const areas = [...new Set(pujas.map(row => (row['Area'] || '').trim()).filter(Boolean))].sort();
+  const areaSelect = document.getElementById('area-select');
+  areas.forEach(area => { const opt = document.createElement('option'); opt.value = area; opt.textContent = area; areaSelect.appendChild(opt); });
+}
+
+function applyFilters() {
+  const filtered = allPujas.filter(row => {
+    const name = (row['Puja Name'] || '').toLowerCase();
+    const areaVal = (row['Area'] || '').toLowerCase();
+    const committee = (row['Committee Name'] || '').toLowerCase();
+    const address = (row['Full Address'] || '').toLowerCase();
+    const themeVal = (row['Theme'] || '').toLowerCase();
+    
+    const matchesSearch = !activeFilters.search || name.includes(activeFilters.search) || areaVal.includes(activeFilters.search) || committee.includes(activeFilters.search) || address.includes(activeFilters.search) || themeVal.includes(activeFilters.search);
+    const matchesArea = activeFilters.area === 'all' || (row['Area'] || '').trim() === activeFilters.area;
+
+    const metro = (row['Nearest Metro Station'] || '').trim();
+    const hasMetro = metro && metro.toLowerCase() !== 'no nearby metro station';
+    let matchesMetro = true;
+    if (activeFilters.metro === 'yes') matchesMetro = hasMetro;
+    if (activeFilters.metro === 'no') matchesMetro = !hasMetro;
+
+    const pushpanjaliVal = (row['Pushpanjali Open to All'] || row['Pushpanjali'] || '').trim().toLowerCase();
+    let matchesPushpanjali = true;
+    if (activeFilters.pushpanjali === 'yes') matchesPushpanjali = pushpanjaliVal.includes('yes') || pushpanjaliVal.includes('open') || pushpanjaliVal === 'true';
+    else if (activeFilters.pushpanjali === 'no') matchesPushpanjali = pushpanjaliVal.includes('no') || pushpanjaliVal === 'false';
+
+    return matchesSearch && matchesArea && matchesMetro && matchesPushpanjali;
+  });
+  renderList(filtered, allPujas.length);
+}
+
+function renderList(pujas, totalCount) {
+  const container = document.getElementById('directory');
+  document.getElementById('results-counter').textContent = `Showing ${pujas.length} of ${totalCount} Pujas`;
+
+  if (pujas.length === 0) { container.innerHTML = `<div id="loading-state">No matching Durga Pujas found for your selected filters.</div>`; return; }
+
+  container.innerHTML = pujas.map(row => {
+    const name = row['Puja Name'] || 'Unnamed Puja';
+    const committee = row['Committee Name'] || '';
+    const area = row['Area'] || '';
+    const address = row['Full Address'] || '';
+    const type = row['Public or Apartment Event'] || '';
+    const metro = row['Nearest Metro Station'] || '';
+    const dist = row['Distance from Metro'] || '';
+    const parking = row['Parking Available'] || 'Not specified';
+    const isSponsored = (row['Sponsored'] || '').trim().toLowerCase() === 'yes';
+    const coords = row['GPS Coordinates'] || '';
+    const theme = (row['Theme'] || '').trim();
+    
+    const hasCulturalEvents = eventsSet.has(name.toLowerCase().trim());
+    
+    const pushpanjaliVal = (row['Pushpanjali Open to All'] || '').trim().toLowerCase();
+    const isOpenPushpanjali = pushpanjaliVal.includes('yes') || pushpanjaliVal.includes('open') || pushpanjaliVal === 'true';
+    const inauDay = (row['Inauguration Day'] || '').trim();
+    const inauTime = (row['Inauguration Time'] || '').trim();
+
+    let gmapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name + ' ' + address + ' Bangalore')}`;
+    const cleanCoords = coords.replace(/\s+/g, '');
+    if (cleanCoords.includes(',')) gmapsLink = `https://www.google.com/maps/search/?api=1&query=${cleanCoords}`;
+
+    const typeBadgeClass = type.toLowerCase().includes('public') ? 'badge-public' : 'badge-apartment';
+
+    const eventsButton = hasCulturalEvents 
+      ? `<a class="events-btn" href="cultural-events.html#${slugify(name)}">🎭 Cultural Events →</a>` 
+      : ``;
+
+    return `
+      <div class="puja-card">
+        ${isSponsored ? '<span class="badge sponsored-tag" style="align-self: flex-start;">SPONSORED</span>' : ''}
+        <h3>${name}</h3>
+        ${committee ? `<div class="committee">${committee}</div>` : ''}
+        
+        <div class="badge-row">
+          ${type ? `<span class="badge ${typeBadgeClass}">${type}</span>` : ''}
+          ${area ? `<span class="badge badge-area">📍 ${area}</span>` : ''}
+          ${metro && metro.toLowerCase() !== 'no nearby metro station' ? `<span class="badge badge-metro">🚇 ${metro} ${dist ? '(' + dist + ' km)' : ''}</span>` : ''}
+          ${theme ? `<span class="badge badge-theme">✨ Theme: ${theme}</span>` : ''}
+          ${isOpenPushpanjali ? `<span class="badge badge-pushpanjali">🌸 Open Pushpanjali</span>` : ''}
+        </div>
+
+        ${address ? `<p>${address}</p>` : ''}
+        ${inauDay || inauTime ? `<div class="inauguration-info">🕒 Inauguration: ${inauDay} ${inauTime}</div>` : ''}
+        
+        <div class="card-footer">
+          <span class="parking-info">🅿️ Parking: ${parking}</span>
+          <div class="btn-group">
+            ${eventsButton}
+            <a class="gmaps-btn" href="${gmapsLink}" target="_blank">Get Directions →</a>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  if (window.location.hash) {
+    const targetElement = document.querySelector(window.location.hash);
+    if (targetElement) {
+      setTimeout(() => {
+        targetElement.scrollIntoView({ behavior: 'smooth' });
+      }, 200);
+    }
+  }
+}
+
+// EVENT LISTENERS FOR FILTERS
+document.getElementById('search-box').addEventListener('input', (e) => { activeFilters.search = e.target.value.toLowerCase().trim(); applyFilters(); });
+document.getElementById('area-select').addEventListener('change', (e) => { activeFilters.area = e.target.value; applyFilters(); });
+
+document.querySelectorAll('.filter-pills').forEach(group => {
+  const filterType = group.dataset.filter;
+  group.querySelectorAll('.pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      group.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      activeFilters[filterType] = pill.dataset.val;
+      applyFilters();
+    });
+  });
+});
+</script>
+</body>
+</html>

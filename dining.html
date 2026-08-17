@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Bangalore Bengali Dining & Sweet Shops 2026</title>
+
+<!-- Load PapaParse -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+
+<style>
+  :root {
+    --ink: #2b1b12;
+    --accent: #b3202e;
+    --gold: #c99a2e;
+    --gold-light: #fff8e7;
+    --muted: #7a6a5f;
+    --bg: #e5e5e5;
+    --card-bg: #ffffff;
+    --shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  
+  body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    padding-bottom: 70px;
+  }
+
+  .top-ui {
+    position: sticky;
+    top: 0; left: 0; right: 0;
+    z-index: 1000;
+    padding: 12px;
+    background: var(--card-bg);
+    box-shadow: var(--shadow);
+  }
+
+  .header-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  
+  .menu-btn {
+    background: none; border: none;
+    font-size: 24px; color: var(--ink);
+    cursor: pointer; padding: 0; margin-right: 12px;
+  }
+
+  .header-title {
+    flex-grow: 1;
+    font-size: 16px; font-weight: 700; color: var(--ink);
+    margin: 0; line-height: 1.2;
+  }
+
+  .nav-btn-group {
+    display: flex;
+    gap: 6px;
+  }
+
+  .nav-btn {
+    font-size: 11px; font-weight: 600; color: #fff;
+    background: var(--accent); padding: 6px 10px;
+    border-radius: 16px; text-decoration: none;
+    white-space: nowrap;
+  }
+  .nav-btn.secondary { background: var(--muted); }
+
+  .filter-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 10px 16px;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    font-size: 14px;
+    outline: none;
+    background: #fafafa;
+  }
+  .search-input:focus { border-color: var(--accent); background: #fff; }
+
+  .dropdown-row {
+    display: flex;
+    gap: 10px;
+  }
+
+  .filter-select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    font-size: 13px;
+    outline: none;
+    background: #fff;
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  .filter-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+  .pill {
+    border: 1px solid #ddd;
+    background: #fff;
+    padding: 4px 12px;
+    border-radius: 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--ink);
+    transition: all 0.15s;
+  }
+  .pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .results-count { font-size: 12px; color: var(--muted); margin-top: 4px; font-weight: 500; }
+
+  .directory-grid {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .business-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border: 1px solid #eee;
+  }
+
+  .business-card.sponsored-card {
+    border: 2px solid var(--gold);
+    background: #fffdfa;
+  }
+
+  .card-top { display: flex; gap: 14px; align-items: flex-start; }
+
+  .business-logo {
+    width: 64px; height: 64px;
+    border-radius: 10px; object-fit: cover;
+    background: #f5f5f5; border: 1px solid #eee; flex-shrink: 0;
+  }
+
+  .business-logo-fallback {
+    width: 64px; height: 64px;
+    border-radius: 10px; background: #fdf2f2;
+    border: 1px solid #fcdada; display: flex;
+    align-items: center; justify-content: center;
+    font-size: 28px; flex-shrink: 0;
+  }
+
+  .title-block { flex-grow: 1; display: flex; flex-direction: column; gap: 3px; }
+  .business-card h3 { margin: 0; font-size: 17px; color: var(--ink); line-height: 1.2; }
+
+  .badge-row { display: flex; gap: 6px; flex-wrap: wrap; margin: 3px 0; }
+  .badge { font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 600; }
+  .badge-category { background: #ffebee; color: #b3202e; }
+  .badge-area { background: #e3f2fd; color: #1565c0; }
+  .badge-cost { background: #ede7f6; color: #512da8; }
+  .badge-sponsored { background: var(--gold); color: #fff; }
+  .badge-delivery { background: #e8f5e9; color: #2e7d32; }
+  .badge-catering { background: #fff3e0; color: #d84315; border: 1px solid #ffccbc; }
+  .badge-cloud { background: #fff3e0; color: #e65100; border: 1px solid #ffe0b2; }
+  .badge-dinein { background: #e0f2f1; color: #00695c; }
+  .badge-sweet { background: #fce4ec; color: #c2185b; }
+
+  .business-desc { margin: 2px 0; font-size: 13px; color: var(--muted); line-height: 1.4; }
+  .specialties-text { font-size: 12px; color: #444; background: #f5f5f5; padding: 6px 10px; border-radius: 6px; margin: 2px 0; }
+  .cost-info { font-size: 13px; font-weight: 700; color: #512da8; margin: 3px 0; }
+  .phone-info { font-size: 13px; font-weight: 600; color: #2e7d32; margin: 2px 0; }
+  .phone-link { color: #2e7d32; text-decoration: none; font-weight: 700; }
+  .phone-link:hover { text-decoration: underline; }
+  .offer-box { background: var(--gold-light); border: 1px dashed var(--gold); border-radius: 8px; padding: 8px 12px; font-size: 13px; font-weight: 700; color: #8c6800; display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+
+  .delivery-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding: 8px 0 2px 0;
+  }
+  .delivery-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-right: 2px;
+  }
+  .aggregator-btn {
+    text-decoration: none;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: transform 0.1s;
+  }
+  .aggregator-btn:active { transform: scale(0.95); }
+  .btn-zomato { background: #cb202d; color: #fff; }
+  .btn-swiggy { background: #fc8019; color: #fff; }
+  .btn-toing { background: #6c5ce7; color: #fff; }
+  .btn-ownly { background: #0984e3; color: #fff; }
+
+  .card-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 6px; padding-top: 10px; border-top: 1px solid #f0f0f0;
+    flex-wrap: wrap; gap: 8px;
+  }
+  .address-text { font-size: 12px; color: var(--muted); max-width: 100%; }
+
+  .btn-group { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .action-btn {
+    text-decoration: none; padding: 7px 12px; border-radius: 6px;
+    font-size: 12px; font-weight: 600; display: inline-flex;
+    align-items: center; gap: 4px; transition: all 0.15s;
+  }
+  .btn-call { background: #2e7d32; color: #fff; }
+  .btn-web { background: #1565c0; color: #fff; }
+  .btn-map { background: var(--accent); color: #fff; }
+
+  .footer-card {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(5px);
+    padding: 10px; text-align: center; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 1000;
+  }
+  .footer-title { font-size: 12px; font-weight: 700; color: var(--ink); margin: 0 0 2px 0; }
+  .footer-credit { font-size: 10px; color: var(--muted); margin: 0; }
+
+  .side-menu {
+    position: fixed; top: 0; left: -280px; width: 280px; height: 100%;
+    background: #fff; z-index: 2000; box-shadow: 2px 0 12px rgba(0,0,0,0.2);
+    transition: left 0.3s ease; padding: 24px 20px;
+  }
+  .side-menu.open { left: 0; }
+  .menu-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1999; display: none; opacity: 0; transition: opacity 0.3s ease; }
+  .menu-overlay.open { display: block; opacity: 1; }
+  .close-btn { background: none; border: none; font-size: 28px; color: var(--ink); position: absolute; top: 16px; right: 20px; cursor: pointer; }
+  .side-menu h2 { margin: 0 0 24px 0; font-size: 18px; color: var(--accent); }
+  .side-menu a { display: block; padding: 12px 0; font-size: 16px; color: var(--ink); text-decoration: none; border-bottom: 1px solid #eee; font-weight: 500; }
+  #loading-state { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div id="side-menu" class="side-menu">
+  <button id="close-menu" class="close-btn">&times;</button>
+  <h2>Menu</h2>
+  <a href="index.html">🗺️ Interactive Metro Map</a>
+  <a href="puja-list.html">📋 Full Puja List</a>
+  <a href="cultural-events.html">🎭 Cultural Events</a>
+  <a href="dining.html">🍴 Restaurants & Sweet Shops</a>
+  <a href="business.html">🛍️ Shopping & Businesses</a>
+</div>
+<div id="menu-overlay" class="menu-overlay"></div>
+
+<div class="top-ui">
+  <div class="header-card">
+    <button id="hamburger-btn" class="menu-btn">☰</button>
+    <h1 class="header-title">Dining & Sweet Shops</h1>
+    <div class="nav-btn-group">
+      <a href="business.html" class="nav-btn secondary">🛍️ Shops</a>
+      <a href="index.html" class="nav-btn">Map View</a>
+    </div>
+  </div>
+
+  <div class="filter-section">
+    <input type="text" id="search-box" class="search-input" placeholder="Search by restaurant, dish, cuisine, or area..." />
+    
+    <div class="dropdown-row">
+      <select id="area-select" class="filter-select">
+        <option value="all">All Areas</option>
+      </select>
+    </div>
+
+    <!-- Experience Filter with Sweet Shops -->
+    <div class="filter-group">
+      <span>Experience:</span>
+      <div class="filter-pills" data-filter-group="type">
+        <button class="pill active" data-filter="type" data-val="all">All</button>
+        <button class="pill" data-filter="type" data-val="dinein">🍽️ Dine-in Only</button>
+        <button class="pill" data-filter="type" data-val="sweet">🍨 Sweet Shops</button>
+        <button class="pill" data-filter="type" data-val="cloud">☁️ Cloud Kitchen</button>
+      </div>
+    </div>
+
+    <!-- Secondary Filters: Direct Delivery & Catering -->
+    <div class="filter-group">
+      <span>Filters:</span>
+      <div class="filter-pills">
+        <button class="pill" data-filter="delivery" data-val="direct">🛵 Direct Delivery</button>
+        <button class="pill" data-filter="catering" data-val="yes">🍲 Catering</button>
+      </div>
+    </div>
+
+    <div id="results-counter" class="results-count">Showing 0 of 0 Listings</div>
+  </div>
+</div>
+
+<div id="directory" class="directory-grid">
+  <div id="loading-state">⏳ Loading food & sweet shops...</div>
+</div>
+
+<div class="footer-card">
+  <p class="footer-title">🌟 Presented by [Title Sponsor]</p>
+  <p class="footer-credit">Powered by The Urban Nomad Productions</p>
+</div>
+
+<script>
+const sideMenu = document.getElementById('side-menu');
+const menuOverlay = document.getElementById('menu-overlay');
+document.getElementById('hamburger-btn').addEventListener('click', () => { sideMenu.classList.add('open'); menuOverlay.classList.add('open'); });
+document.getElementById('close-menu').addEventListener('click', closeMenu);
+menuOverlay.addEventListener('click', closeMenu);
+function closeMenu() { sideMenu.classList.remove('open'); menuOverlay.classList.remove('open'); }
+
+const SHOPS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdq1D4JPdrIFCQaGXT1mMZ9J_Nj7bmx-l82wUpro-WNRfxxIcL5xgFEYom46KZMmNdRsdPGkHNDq99/pub?gid=1338678170&single=true&output=csv";
+
+function getVal(row, keyName) {
+  const target = keyName.toLowerCase().replace(/\s+/g, '');
+  for (const k of Object.keys(row)) {
+    if (k.toLowerCase().replace(/\s+/g, '') === target) {
+      const v = row[k];
+      return (v !== undefined && v !== null) ? String(v).trim() : '';
+    }
+  }
+  return '';
+}
+
+// Checks if entry offers catering
+function checkProvidesCatering(row) {
+  const keys = ['Catering', 'Bengali Catering', 'Catering Available', 'Offers Catering', 'Provides Catering', 'Catering Service'];
+  for (const key of keys) {
+    const val = getVal(row, key).toLowerCase();
+    if (val === 'yes' || val === 'true' || val === 'y' || val.includes('available')) {
+      return true;
+    }
+  }
+  return false;
+}
+
+const FOOD_KEYWORDS = ['restaurant', 'sweet', 'cafe', 'food', 'catering', 'bakery', 'mishti', 'dhaba', 'cloud kitchen', 'kitchen'];
+
+function isFoodCategory(category, row) {
+  const cat = (category || '').toLowerCase();
+  if (checkProvidesCatering(row)) return true;
+  return FOOD_KEYWORDS.some(keyword => cat.includes(keyword));
+}
+
+function checkIsCloudKitchen(row) {
+  const cat = getVal(row, 'Category').toLowerCase();
+  const desc = getVal(row, 'Business Description').toLowerCase();
+  const physical = getVal(row, 'Physical Store').toLowerCase();
+  return cat.includes('cloud') || cat.includes('kitchen') || desc.includes('cloud kitchen') || physical === 'no';
+}
+
+function checkIsSweetShop(row) {
+  const cat = getVal(row, 'Category').toLowerCase();
+  const name = getVal(row, 'Business Name').toLowerCase();
+  return cat.includes('sweet') || cat.includes('mishti') || name.includes('sweet') || name.includes('mishti');
+}
+
+let diningItems = [];
+let activeFilters = { search: '', area: 'all', type: 'all', directDelivery: false, catering: false };
+
+Papa.parse(SHOPS_CSV_URL, {
+  download: true,
+  header: true,
+  skipEmptyLines: true,
+  complete: function(results) {
+    diningItems = results.data.filter(row => isFoodCategory(getVal(row, 'Category'), row));
+    populateDropdowns(diningItems);
+    applyFilters();
+  },
+  error: function(err) {
+    document.getElementById('directory').innerHTML = `<div id="loading-state" style="color:red;">Error loading dining directory.</div>`;
+  }
+});
+
+function populateDropdowns(items) {
+  const areas = [...new Set(items.map(r => getVal(r, 'Area')).filter(Boolean))].sort();
+  const areaSelect = document.getElementById('area-select');
+  areaSelect.innerHTML = '<option value="all">All Areas</option>';
+  areas.forEach(area => {
+    const opt = document.createElement('option');
+    opt.value = area;
+    opt.textContent = area;
+    areaSelect.appendChild(opt);
+  });
+}
+
+function applyFilters() {
+  const filtered = diningItems.filter(row => {
+    const name = getVal(row, 'Business Name').toLowerCase();
+    const cat = getVal(row, 'Category').toLowerCase();
+    const areaVal = getVal(row, 'Area').toLowerCase();
+    const desc = getVal(row, 'Business Description').toLowerCase();
+    const spec = getVal(row, 'Specialties').toLowerCase();
+    const query = activeFilters.search;
+
+    const matchesSearch = !query || name.includes(query) || cat.includes(query) || areaVal.includes(query) || desc.includes(query) || spec.includes(query);
+    const matchesArea = activeFilters.area === 'all' || getVal(row, 'Area') === activeFilters.area;
+
+    const isCloud = checkIsCloudKitchen(row);
+    const isSweet = checkIsSweetShop(row);
+
+    let matchesType = true;
+    if (activeFilters.type === 'cloud') matchesType = isCloud;
+    if (activeFilters.type === 'sweet') matchesType = isSweet;
+    if (activeFilters.type === 'dinein') matchesType = !isCloud;
+
+    const directVal = getVal(row, 'Direct Delivery').toLowerCase();
+    const hasDirectDelivery = directVal === 'yes' || directVal === 'true' || directVal.includes('available');
+    let matchesDelivery = true;
+    if (activeFilters.directDelivery) matchesDelivery = hasDirectDelivery;
+
+    const offersCatering = checkProvidesCatering(row) || cat.includes('catering');
+    let matchesCatering = true;
+    if (activeFilters.catering) matchesCatering = offersCatering;
+
+    return matchesSearch && matchesArea && matchesType && matchesDelivery && matchesCatering;
+  });
+
+  filtered.sort((a, b) => {
+    const aSpon = getVal(a, 'Sponsored').toLowerCase() === 'yes' ? 1 : 0;
+    const bSpon = getVal(b, 'Sponsored').toLowerCase() === 'yes' ? 1 : 0;
+    return bSpon - aSpon;
+  });
+
+  renderList(filtered, diningItems.length);
+}
+
+function renderList(items, totalCount) {
+  const container = document.getElementById('directory');
+  document.getElementById('results-counter').textContent = `Showing ${items.length} of ${totalCount} Food Listings`;
+
+  if (items.length === 0) {
+    container.innerHTML = `<div id="loading-state">No matching dining or sweet shops found.</div>`;
+    return;
+  }
+
+  container.innerHTML = items.map(row => {
+    const name = getVal(row, 'Business Name') || 'Unnamed Eatery';
+    const category = getVal(row, 'Category');
+    const address = getVal(row, 'Full Address');
+    const area = getVal(row, 'Area');
+    const desc = getVal(row, 'Business Description');
+    const webLink = getVal(row, 'Website or Social Link');
+    const isSponsored = getVal(row, 'Sponsored').toLowerCase() === 'yes';
+    const logoUrl = getVal(row, 'Logo URL');
+    const offer = getVal(row, 'Special Offer');
+    const phone = getVal(row, 'Phone');
+    const specialties = getVal(row, 'Specialties');
+    
+    const rawCost = getVal(row, 'Cost For Two');
+    const costForTwo = rawCost ? (rawCost.startsWith('₹') ? rawCost : `₹${rawCost}`) : '';
+    
+    const coords = getVal(row, 'GPS Coordinates');
+    const isCloud = checkIsCloudKitchen(row);
+    const isSweet = checkIsSweetShop(row);
+    const offersCatering = checkProvidesCatering(row);
+
+    const zomato = getVal(row, 'Zomato');
+    const swiggy = getVal(row, 'Swiggy');
+    const toing = getVal(row, 'Toing');
+    const ownly = getVal(row, 'Ownly');
+    const directDelivery = getVal(row, 'Direct Delivery').toLowerCase();
+    const hasDirectDelivery = directDelivery === 'yes' || directDelivery === 'true' || directDelivery.includes('available');
+
+    let gmapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name + ' ' + address + ' Bangalore')}`;
+    const cleanCoords = coords.replace(/\s+/g, '');
+    if (cleanCoords.includes(',')) gmapsLink = `https://www.google.com/maps/search/?api=1&query=${cleanCoords}`;
+
+    let icon = '🍴';
+    if (isSweet) icon = '🍨';
+    if (isCloud) icon = '☁️';
+    if (category.toLowerCase().includes('catering')) icon = '🍲';
+
+    const logoBlock = logoUrl 
+      ? `<img src="${logoUrl}" alt="${name}" class="business-logo" onerror="this.style.display='none'">` 
+      : `<div class="business-logo-fallback">${icon}</div>`;
+
+    function buildAggregatorLink(val, platformName, baseSearchUrl) {
+      if (!val || val.toLowerCase() === 'no') return '';
+      return val.startsWith('http') ? val : `${baseSearchUrl}${encodeURIComponent(name + ' Bangalore')}`;
+    }
+
+    const zomatoUrl = buildAggregatorLink(zomato, 'Zomato', 'https://www.zomato.com/bangalore/restaurants?q=');
+    const swiggyUrl = buildAggregatorLink(swiggy, 'Swiggy', 'https://www.swiggy.com/search?query=');
+    const toingUrl = buildAggregatorLink(toing, 'Toing', 'https://toing.in/?q=');
+    const ownlyUrl = buildAggregatorLink(ownly, 'Ownly', 'https://ownly.in/?q=');
+    const hasAnyAggregator = zomatoUrl || swiggyUrl || toingUrl || ownlyUrl;
+
+    return `
+      <div class="business-card ${isSponsored ? 'sponsored-card' : ''}">
+        <div class="card-top">
+          ${logoBlock}
+          <div class="title-block">
+            <div class="badge-row">
+              ${isSponsored ? '<span class="badge badge-sponsored">★ FEATURED</span>' : ''}
+              ${isCloud 
+                ? '<span class="badge badge-cloud">☁️ Cloud Kitchen</span>' 
+                : (isSweet 
+                    ? '<span class="badge badge-sweet">🍨 Sweet Shop</span>'
+                    : '<span class="badge badge-dinein">🍽️ Dine-in Available</span>'
+                  )
+              }
+              ${category && !isCloud && !isSweet ? `<span class="badge badge-category">${category}</span>` : ''}
+              ${area ? `<span class="badge badge-area">📍 ${area}</span>` : ''}
+              ${costForTwo ? `<span class="badge badge-cost">💰 Cost for two: ${costForTwo}</span>` : ''}
+              ${hasDirectDelivery ? `<span class="badge badge-delivery">🛵 Direct Delivery</span>` : ''}
+              ${offersCatering ? `<span class="badge badge-catering">🍲 Catering Available</span>` : ''}
+            </div>
+            <h3>${name}</h3>
+          </div>
+        </div>
+
+        ${desc ? `<p class="business-desc">${desc}</p>` : ''}
+        ${specialties ? `<div class="specialties-text">🍴 <strong>Must Try:</strong> ${specialties}</div>` : ''}
+        ${costForTwo ? `<div class="cost-info">💰 <strong>Cost for two:</strong> ${costForTwo}</div>` : ''}
+        ${phone ? `<div class="phone-info">📞 <strong>Phone:</strong> <a class="phone-link" href="tel:${phone}">${phone}</a></div>` : ''}
+        ${offer ? `<div class="offer-box">🎁 <span>${offer}</span></div>` : ''}
+
+        ${hasAnyAggregator ? `
+          <div class="delivery-row">
+            <span class="delivery-label">Order Online:</span>
+            ${zomatoUrl ? `<a class="aggregator-btn btn-zomato" href="${zomatoUrl}" target="_blank">Zomato</a>` : ''}
+            ${swiggyUrl ? `<a class="aggregator-btn btn-swiggy" href="${swiggyUrl}" target="_blank">Swiggy</a>` : ''}
+            ${toingUrl ? `<a class="aggregator-btn btn-toing" href="${toingUrl}" target="_blank">Toing</a>` : ''}
+            ${ownlyUrl ? `<a class="aggregator-btn btn-ownly" href="${ownlyUrl}" target="_blank">Ownly</a>` : ''}
+          </div>
+        ` : ''}
+
+        ${address && !isCloud ? `<div class="address-text">📌 ${address}</div>` : ''}
+        ${isCloud && area ? `<div class="address-text">📌 Kitchen Base: ${area} (Delivery Only)</div>` : ''}
+
+        <div class="card-footer">
+          <div class="btn-group">
+            ${phone ? `<a class="action-btn btn-call" href="tel:${phone}">📞 Call / Order</a>` : ''}
+            ${webLink ? `<a class="action-btn btn-web" href="${webLink}" target="_blank">🌐 Menu / Order</a>` : ''}
+            ${!isCloud ? `<a class="action-btn btn-map" href="${gmapsLink}" target="_blank">📍 Directions</a>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+document.getElementById('search-box').addEventListener('input', (e) => {
+  activeFilters.search = e.target.value.toLowerCase().trim();
+  applyFilters();
+});
+
+document.getElementById('area-select').addEventListener('change', (e) => {
+  activeFilters.area = e.target.value;
+  applyFilters();
+});
+
+document.querySelectorAll('.filter-pills .pill').forEach(pill => {
+  pill.addEventListener('click', function() {
+    const filter = this.dataset.filter;
+    const val = this.dataset.val;
+
+    if (filter === 'type') {
+      document.querySelectorAll('.filter-pills .pill[data-filter="type"]').forEach(p => p.classList.remove('active'));
+      this.classList.add('active');
+      activeFilters.type = val;
+    } else if (filter === 'delivery') {
+      this.classList.toggle('active');
+      activeFilters.directDelivery = this.classList.contains('active');
+    } else if (filter === 'catering') {
+      this.classList.toggle('active');
+      activeFilters.catering = this.classList.contains('active');
+    }
+    applyFilters();
+  });
+});
+</script>
+</body>
+</html>

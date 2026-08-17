@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Bangalore Bengali Boutiques, Grocery & Shopping 2026</title>
+
+<!-- Load PapaParse for reading Google Sheets CSV -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+
+<style>
+  :root {
+    --ink: #2b1b12;
+    --accent: #2e7d32;   /* Forest Green theme for Retail, Grocery & Services */
+    --gold: #c99a2e;
+    --gold-light: #fff8e7;
+    --muted: #7a6a5f;
+    --bg: #e5e5e5;
+    --card-bg: #ffffff;
+    --shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  
+  body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    padding-bottom: 70px;
+  }
+
+  /* --- COMPACT MOBILE HEADER --- */
+  .top-ui {
+    position: sticky;
+    top: 0; left: 0; right: 0;
+    z-index: 1000;
+    padding: 10px 12px;
+    background: var(--card-bg);
+    box-shadow: var(--shadow);
+  }
+
+  .header-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  
+  .menu-btn {
+    background: none; border: none;
+    font-size: 22px; color: var(--ink);
+    cursor: pointer; padding: 0; margin-right: 10px;
+  }
+
+  .header-title {
+    flex-grow: 1;
+    font-size: 15px; font-weight: 700; color: var(--ink);
+    margin: 0; line-height: 1.2;
+  }
+
+  .nav-btn-group {
+    display: flex;
+    gap: 6px;
+  }
+
+  .nav-btn {
+    font-size: 11px; font-weight: 600; color: #fff;
+    background: var(--accent); padding: 5px 9px;
+    border-radius: 14px; text-decoration: none;
+    white-space: nowrap;
+  }
+  .nav-btn.secondary { background: var(--muted); }
+
+  /* --- FILTER CONTROLS --- */
+  .filter-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 8px 14px;
+    border: 1px solid #ddd;
+    border-radius: 18px;
+    font-size: 13px;
+    outline: none;
+    background: #fafafa;
+  }
+  .search-input:focus { border-color: var(--accent); background: #fff; }
+
+  /* 2-Row Stacked Quick Category Buttons */
+  .quick-access-container {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .quick-access-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .quick-pill {
+    border: 1px solid #ddd;
+    background: #f8f8f8;
+    padding: 5px 11px;
+    border-radius: 14px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--ink);
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .quick-pill.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
+  .dropdown-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .filter-select {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 18px;
+    font-size: 12px;
+    outline: none;
+    background: #fff;
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .results-count { font-size: 11px; color: var(--muted); margin-top: 2px; font-weight: 500; }
+
+  /* --- DIRECTORY LIST --- */
+  .directory-grid {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .business-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border: 1px solid #eee;
+  }
+
+  .business-card.sponsored-card {
+    border: 2px solid var(--gold);
+    background: #fffdfa;
+  }
+
+  .card-top { display: flex; gap: 12px; align-items: flex-start; }
+
+  .business-logo {
+    width: 60px; height: 60px;
+    border-radius: 10px; object-fit: cover;
+    background: #f5f5f5; border: 1px solid #eee; flex-shrink: 0;
+  }
+
+  .business-logo-fallback {
+    width: 60px; height: 60px;
+    border-radius: 10px; background: #e8f5e9;
+    border: 1px solid #c8e6c9; display: flex;
+    align-items: center; justify-content: center;
+    font-size: 26px; flex-shrink: 0;
+  }
+
+  .title-block { flex-grow: 1; display: flex; flex-direction: column; gap: 3px; }
+  .business-card h3 { margin: 0; font-size: 16px; color: var(--ink); line-height: 1.2; }
+
+  .badge-row { display: flex; gap: 6px; flex-wrap: wrap; margin: 2px 0; }
+  .badge { font-size: 11px; padding: 2px 7px; border-radius: 5px; font-weight: 600; }
+  .badge-category { background: #e8f5e9; color: #2e7d32; }
+  .badge-area { background: #e3f2fd; color: #1565c0; }
+  .badge-catering { background: #fff3e0; color: #d84315; border: 1px solid #ffccbc; }
+  .badge-sponsored { background: var(--gold); color: #fff; }
+
+  .business-desc { margin: 2px 0; font-size: 13px; color: var(--muted); line-height: 1.4; }
+  .specialties-text { font-size: 12px; color: #444; background: #f5f5f5; padding: 6px 10px; border-radius: 6px; margin: 2px 0; }
+  .phone-info { font-size: 13px; font-weight: 600; color: #2e7d32; margin: 2px 0; }
+  .phone-link { color: #2e7d32; text-decoration: none; font-weight: 700; }
+  .phone-link:hover { text-decoration: underline; }
+  .offer-box { background: var(--gold-light); border: 1px dashed var(--gold); border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 700; color: #8c6800; display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+
+  .card-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 6px; padding-top: 10px; border-top: 1px solid #f0f0f0;
+    flex-wrap: wrap; gap: 8px;
+  }
+  .address-text { font-size: 12px; color: var(--muted); max-width: 100%; }
+
+  .btn-group { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .action-btn {
+    text-decoration: none; padding: 7px 12px; border-radius: 6px;
+    font-size: 12px; font-weight: 600; display: inline-flex;
+    align-items: center; gap: 4px; transition: all 0.15s;
+  }
+  .btn-call { background: #2e7d32; color: #fff; }
+  .btn-web { background: #1565c0; color: #fff; }
+  .btn-map { background: #d32f2f; color: #fff; }
+
+  /* --- STICKY FOOTER --- */
+  .footer-card {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(5px);
+    padding: 10px; text-align: center; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 1000;
+  }
+  .footer-title { font-size: 12px; font-weight: 700; color: var(--ink); margin: 0 0 2px 0; }
+  .footer-credit { font-size: 10px; color: var(--muted); margin: 0; }
+
+  /* --- SIDE MENU --- */
+  .side-menu {
+    position: fixed; top: 0; left: -280px; width: 280px; height: 100%;
+    background: #fff; z-index: 2000; box-shadow: 2px 0 12px rgba(0,0,0,0.2);
+    transition: left 0.3s ease; padding: 24px 20px;
+  }
+  .side-menu.open { left: 0; }
+  .menu-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1999; display: none; opacity: 0; transition: opacity 0.3s ease; }
+  .menu-overlay.open { display: block; opacity: 1; }
+  .close-btn { background: none; border: none; font-size: 28px; color: var(--ink); position: absolute; top: 16px; right: 20px; cursor: pointer; }
+  .side-menu h2 { margin: 0 0 24px 0; font-size: 18px; color: var(--accent); }
+  .side-menu a { display: block; padding: 12px 0; font-size: 16px; color: var(--ink); text-decoration: none; border-bottom: 1px solid #eee; font-weight: 500; }
+  #loading-state { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div id="side-menu" class="side-menu">
+  <button id="close-menu" class="close-btn">&times;</button>
+  <h2>Menu</h2>
+  <a href="index.html">🗺️ Interactive Metro Map</a>
+  <a href="puja-list.html">📋 Full Puja List</a>
+  <a href="cultural-events.html">🎭 Cultural Events</a>
+  <a href="dining.html">🍴 Restaurants & Sweet Shops</a>
+  <a href="business.html">🛍️ Shopping & Businesses</a>
+</div>
+<div id="menu-overlay" class="menu-overlay"></div>
+
+<div class="top-ui">
+  <div class="header-card">
+    <button id="hamburger-btn" class="menu-btn">☰</button>
+    <h1 class="header-title">Shopping & Services</h1>
+    <div class="nav-btn-group">
+      <a href="dining.html" class="nav-btn secondary">🍴 Food</a>
+      <a href="index.html" class="nav-btn">Map View</a>
+    </div>
+  </div>
+
+  <div class="filter-section">
+    <input type="text" id="search-box" class="search-input" placeholder="Search by shop, item, or area..." />
+    
+    <!-- 2 Balanced Rows of Quick Access Priority Buttons -->
+    <div class="quick-access-container" id="quick-category-pills">
+      <div class="quick-access-row">
+        <button class="quick-pill active" data-cat="all">All</button>
+        <button class="quick-pill" data-cat="apparel">👗 Apparel & Boutiques</button>
+        <button class="quick-pill" data-cat="grocery">🌾 Bengali Grocery</button>
+      </div>
+      <div class="quick-access-row">
+        <button class="quick-pill" data-cat="sweet">🍨 Sweet Shops</button>
+        <button class="quick-pill" data-cat="catering">🍲 Bengali Catering</button>
+        <button class="quick-pill" data-cat="jewellery">💍 Jewellery</button>
+      </div>
+    </div>
+
+    <!-- Dropdowns: Full Master + Dynamic Category Dropdown & Area Dropdown -->
+    <div class="dropdown-row">
+      <select id="category-select" class="filter-select">
+        <option value="all">All Categories</option>
+      </select>
+
+      <select id="area-select" class="filter-select">
+        <option value="all">All Areas</option>
+      </select>
+    </div>
+
+    <div id="results-counter" class="results-count">Showing 0 of 0 Listings</div>
+  </div>
+</div>
+
+<div id="directory" class="directory-grid">
+  <div id="loading-state">⏳ Loading shops and businesses...</div>
+</div>
+
+<div class="footer-card">
+  <p class="footer-title">🌟 Presented by [Title Sponsor]</p>
+  <p class="footer-credit">Powered by The Urban Nomad Productions</p>
+</div>
+
+<script>
+const sideMenu = document.getElementById('side-menu');
+const menuOverlay = document.getElementById('menu-overlay');
+document.getElementById('hamburger-btn').addEventListener('click', () => { sideMenu.classList.add('open'); menuOverlay.classList.add('open'); });
+document.getElementById('close-menu').addEventListener('click', closeMenu);
+menuOverlay.addEventListener('click', closeMenu);
+function closeMenu() { sideMenu.classList.remove('open'); menuOverlay.classList.remove('open'); }
+
+const SHOPS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdq1D4JPdrIFCQaGXT1mMZ9J_Nj7bmx-l82wUpro-WNRfxxIcL5xgFEYom46KZMmNdRsdPGkHNDq99/pub?gid=1338678170&single=true&output=csv";
+
+// Master List of Categories that always exist in the dropdown
+const MASTER_CATEGORIES = [
+  "Apparel & Boutiques",
+  "Bengali Grocery",
+  "Sweet Shops",
+  "Bengali Catering",
+  "Jewellery",
+  "Home Decor & Handicrafts",
+  "Event & Puja Services",
+  "Books & Media",
+  "Travel & Tours"
+];
+
+function getVal(row, keyName) {
+  const target = keyName.toLowerCase().replace(/\s+/g, '');
+  for (const k of Object.keys(row)) {
+    if (k.toLowerCase().replace(/\s+/g, '') === target) {
+      const v = row[k];
+      return (v !== undefined && v !== null) ? String(v).trim() : '';
+    }
+  }
+  return '';
+}
+
+// Checks if the entry has Catering marked as "Yes" in any catering-related column
+function checkProvidesCatering(row) {
+  const keys = ['Catering', 'Bengali Catering', 'Catering Available', 'Offers Catering', 'Provides Catering', 'Catering Service'];
+  for (const key of keys) {
+    const val = getVal(row, key).toLowerCase();
+    if (val === 'yes' || val === 'true' || val.includes('available')) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Exclude pure restaurant/dining keywords (Sweet Shops, Grocery, Catering, or places providing catering are ALLOWED)
+const RESTAURANT_ONLY_KEYWORDS = ['restaurant', 'cafe', 'cloud kitchen', 'dhaba'];
+
+function isRetailOrServiceCategory(row) {
+  const cat = getVal(row, 'Category').toLowerCase();
+  const name = getVal(row, 'Business Name').toLowerCase();
+  
+  if (cat.includes('sweet') || cat.includes('mishti') || cat.includes('grocery') || cat.includes('ration') || cat.includes('catering') || name.includes('sweet') || name.includes('mishti') || name.includes('grocery') || name.includes('catering') || checkProvidesCatering(row)) {
+    return true;
+  }
+  
+  return !RESTAURANT_ONLY_KEYWORDS.some(k => cat.includes(k));
+}
+
+function getBusinessIcon(cat, name) {
+  const c = (cat + ' ' + name).toLowerCase();
+  if (c.includes('sweet') || c.includes('mishti') || c.includes('sandesh') || c.includes('rosogolla') || c.includes('rasgulla')) return '🍨';
+  if (c.includes('grocery') || c.includes('ration')) return '🌾';
+  if (c.includes('catering') || c.includes('caterer')) return '🍲';
+  if (c.includes('boutique') || c.includes('cloth') || c.includes('apparel') || c.includes('saree') || c.includes('kurta')) return '👗';
+  if (c.includes('jewel')) return '💍';
+  if (c.includes('decor') || c.includes('craft') || c.includes('art') || c.includes('shola')) return '🎨';
+  if (c.includes('puja') || c.includes('purohit') || c.includes('dhaki') || c.includes('event')) return '🥁';
+  if (c.includes('travel') || c.includes('tour') || c.includes('cab')) return '🚗';
+  if (c.includes('book')) return '📚';
+  return '🛍️';
+}
+
+let businessItems = [];
+let activeFilters = { search: '', area: 'all', category: 'all' };
+
+Papa.parse(SHOPS_CSV_URL, {
+  download: true,
+  header: true,
+  skipEmptyLines: true,
+  complete: function(results) {
+    businessItems = results.data.filter(row => {
+      const name = getVal(row, 'Business Name');
+      const cat = getVal(row, 'Category');
+      return (name !== '' || cat !== '') && isRetailOrServiceCategory(row);
+    });
+
+    populateDropdowns(businessItems);
+    applyFilters();
+  },
+  error: function(err) {
+    document.getElementById('directory').innerHTML = `<div id="loading-state" style="color:red;">Error loading directory.</div>`;
+  }
+});
+
+function populateDropdowns(items) {
+  const sheetCats = items.map(r => getVal(r, 'Category')).filter(Boolean);
+  const combinedCategories = [...new Set([...MASTER_CATEGORIES, ...sheetCats])].sort();
+
+  const categorySelect = document.getElementById('category-select');
+  categorySelect.innerHTML = '<option value="all">All Categories</option>';
+  combinedCategories.forEach(cat => {
+    const opt = document.createElement('option');
+    opt.value = cat;
+    opt.textContent = cat;
+    categorySelect.appendChild(opt);
+  });
+
+  const areas = [...new Set(items.map(r => getVal(r, 'Area')).filter(Boolean))].sort();
+  const areaSelect = document.getElementById('area-select');
+  areaSelect.innerHTML = '<option value="all">All Areas</option>';
+  areas.forEach(area => {
+    const opt = document.createElement('option');
+    opt.value = area;
+    opt.textContent = area;
+    areaSelect.appendChild(opt);
+  });
+}
+
+function categoryMatches(selectedKeyOrName, row) {
+  if (!selectedKeyOrName || selectedKeyOrName === 'all') return true;
+  
+  const target = selectedKeyOrName.toLowerCase();
+  const itemCategory = getVal(row, 'Category');
+  const itemName = getVal(row, 'Business Name');
+  const rowCat = (itemCategory || '').toLowerCase();
+  const combined = rowCat + ' ' + (itemName || '').toLowerCase();
+  const offersCatering = checkProvidesCatering(row);
+
+  if (target === 'catering' || target.includes('catering')) {
+    return offersCatering || combined.includes('catering') || combined.includes('caterer');
+  }
+  if (target === 'apparel' || target.includes('apparel') || target.includes('boutique')) {
+    return combined.includes('boutique') || combined.includes('cloth') || combined.includes('apparel') || combined.includes('saree') || combined.includes('kurta');
+  }
+  if (target === 'grocery' || target.includes('grocery')) {
+    return combined.includes('grocery') || combined.includes('ration');
+  }
+  if (target === 'sweet' || target.includes('sweet') || target.includes('mishti')) {
+    return combined.includes('sweet') || combined.includes('mishti') || combined.includes('sandesh') || combined.includes('rosogolla') || combined.includes('rasgulla');
+  }
+  if (target === 'jewellery' || target.includes('jewel')) {
+    return combined.includes('jewel');
+  }
+  if (target === 'decor' || target.includes('decor') || target.includes('handicraft')) {
+    return combined.includes('decor') || combined.includes('craft') || combined.includes('art') || combined.includes('shola');
+  }
+  if (target === 'services' || target.includes('event') || target.includes('puja services')) {
+    return combined.includes('puja') || combined.includes('purohit') || combined.includes('dhaki') || combined.includes('event');
+  }
+  if (target === 'travel' || target.includes('travel') || target.includes('tour')) {
+    return combined.includes('travel') || combined.includes('tour') || combined.includes('cab');
+  }
+  if (target === 'books' || target.includes('book')) {
+    return combined.includes('book');
+  }
+
+  return rowCat === target;
+}
+
+function applyFilters() {
+  const filtered = businessItems.filter(row => {
+    const name = getVal(row, 'Business Name').toLowerCase();
+    const cat = getVal(row, 'Category');
+    const areaVal = getVal(row, 'Area').toLowerCase();
+    const desc = getVal(row, 'Business Description').toLowerCase();
+    const spec = getVal(row, 'Specialties').toLowerCase();
+    const query = activeFilters.search;
+
+    const matchesSearch = !query || name.includes(query) || cat.toLowerCase().includes(query) || areaVal.includes(query) || desc.includes(query) || spec.includes(query);
+    const matchesArea = activeFilters.area === 'all' || getVal(row, 'Area') === activeFilters.area;
+    const matchesCat = categoryMatches(activeFilters.category, row);
+
+    return matchesSearch && matchesArea && matchesCat;
+  });
+
+  filtered.sort((a, b) => {
+    const aSpon = getVal(a, 'Sponsored').toLowerCase() === 'yes' ? 1 : 0;
+    const bSpon = getVal(b, 'Sponsored').toLowerCase() === 'yes' ? 1 : 0;
+    return bSpon - aSpon;
+  });
+
+  renderList(filtered, businessItems.length);
+}
+
+function renderList(items, totalCount) {
+  const container = document.getElementById('directory');
+  document.getElementById('results-counter').textContent = `Showing ${items.length} of ${totalCount} Listings`;
+
+  if (items.length === 0) {
+    container.innerHTML = `<div id="loading-state">No matching businesses or stores found.</div>`;
+    return;
+  }
+
+  container.innerHTML = items.map(row => {
+    const name = getVal(row, 'Business Name') || 'Unnamed Business';
+    const category = getVal(row, 'Category');
+    const address = getVal(row, 'Full Address');
+    const area = getVal(row, 'Area');
+    const desc = getVal(row, 'Business Description');
+    const webLink = getVal(row, 'Website or Social Link');
+    const isSponsored = getVal(row, 'Sponsored').toLowerCase() === 'yes';
+    const logoUrl = getVal(row, 'Logo URL');
+    const offer = getVal(row, 'Special Offer');
+    const phone = getVal(row, 'Phone');
+    const specialties = getVal(row, 'Specialties');
+    const coords = getVal(row, 'GPS Coordinates');
+    const physicalStore = getVal(row, 'Physical Store').toLowerCase();
+    const offersCatering = checkProvidesCatering(row);
+
+    const hasPhysicalLocation = physicalStore !== 'no' && (address !== '' || coords !== '');
+
+    let gmapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name + ' ' + address + ' Bangalore')}`;
+    const cleanCoords = coords.replace(/\s+/g, '');
+    if (cleanCoords.includes(',')) gmapsLink = `https://www.google.com/maps/search/?api=1&query=${cleanCoords}`;
+
+    const icon = getBusinessIcon(category, name);
+    const logoBlock = logoUrl 
+      ? `<img src="${logoUrl}" alt="${name}" class="business-logo" onerror="this.style.display='none'">` 
+      : `<div class="business-logo-fallback">${icon}</div>`;
+
+    return `
+      <div class="business-card ${isSponsored ? 'sponsored-card' : ''}">
+        <div class="card-top">
+          ${logoBlock}
+          <div class="title-block">
+            <div class="badge-row">
+              ${isSponsored ? '<span class="badge badge-sponsored">★ FEATURED</span>' : ''}
+              ${category ? `<span class="badge badge-category">${category}</span>` : ''}
+              ${area ? `<span class="badge badge-area">📍 ${area}</span>` : ''}
+              ${offersCatering && !category.toLowerCase().includes('catering') ? '<span class="badge badge-catering">🍲 Catering Available</span>' : ''}
+            </div>
+            <h3>${name}</h3>
+          </div>
+        </div>
+
+        ${desc ? `<p class="business-desc">${desc}</p>` : ''}
+        ${specialties ? `<div class="specialties-text">✨ <strong>Highlights:</strong> ${specialties}</div>` : ''}
+        ${phone ? `<div class="phone-info">📞 <strong>Phone:</strong> <a class="phone-link" href="tel:${phone}">${phone}</a></div>` : ''}
+        ${offer ? `<div class="offer-box">🎁 <span>${offer}</span></div>` : ''}
+        ${address && hasPhysicalLocation ? `<div class="address-text">📌 ${address}</div>` : ''}
+
+        <div class="card-footer">
+          <div class="btn-group">
+            ${phone ? `<a class="action-btn btn-call" href="tel:${phone}">📞 Call Store</a>` : ''}
+            ${webLink ? `<a class="action-btn btn-web" href="${webLink}" target="_blank">🌐 Shop Online</a>` : ''}
+            ${hasPhysicalLocation ? `<a class="action-btn btn-map" href="${gmapsLink}" target="_blank">📍Store Directions</a>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+document.getElementById('search-box').addEventListener('input', (e) => {
+  activeFilters.search = e.target.value.toLowerCase().trim();
+  applyFilters();
+});
+
+// Dropdown synchronization
+document.getElementById('category-select').addEventListener('change', (e) => {
+  const selected = e.target.value;
+  activeFilters.category = selected;
+
+  let matchedPill = false;
+  document.querySelectorAll('#quick-category-pills .quick-pill').forEach(pill => {
+    const pillCat = pill.dataset.cat;
+    if (pillCat !== 'all' && (selected.toLowerCase().includes(pillCat) || (pillCat === 'catering' && selected.toLowerCase().includes('catering')))) {
+      pill.classList.add('active');
+      matchedPill = true;
+    } else if (selected === 'all' && pillCat === 'all') {
+      pill.classList.add('active');
+      matchedPill = true;
+    } else {
+      pill.classList.remove('active');
+    }
+  });
+
+  if (!matchedPill && selected !== 'all') {
+    document.querySelectorAll('#quick-category-pills .quick-pill').forEach(p => p.classList.remove('active'));
+  }
+
+  applyFilters();
+});
+
+// Quick Pill Click Handler
+document.querySelectorAll('#quick-category-pills .quick-pill').forEach(pill => {
+  pill.addEventListener('click', function() {
+    const catKey = this.dataset.cat;
+    activeFilters.category = catKey;
+    
+    document.querySelectorAll('#quick-category-pills .quick-pill').forEach(p => p.classList.remove('active'));
+    this.classList.add('active');
+    
+    const dropdown = document.getElementById('category-select');
+    if (catKey === 'all') {
+      dropdown.value = 'all';
+    } else {
+      let optionFound = false;
+      for (let i = 0; i < dropdown.options.length; i++) {
+        const optVal = dropdown.options[i].value.toLowerCase();
+        if (optVal.includes(catKey) || (catKey === 'catering' && optVal.includes('catering'))) {
+          dropdown.selectedIndex = i;
+          optionFound = true;
+          break;
+        }
+      }
+      if (!optionFound) dropdown.value = 'all';
+    }
+
+    applyFilters();
+  });
+});
+
+document.getElementById('area-select').addEventListener('change', (e) => {
+  activeFilters.area = e.target.value;
+  applyFilters();
+});
+</script>
+</body>
+</html>

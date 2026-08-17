@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Bangalore Durga Puja Metro Map</title>
+
+<!-- Load Leaflet's CSS and JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+
+<style>
+  :root {
+    --ink: #2b1b12;
+    --accent: #b3202e;   /* Durga Puja Red */
+    --gold: #c99a2e;
+    --muted: #7a6a5f;
+    --bg-chip: #ffffff;
+    --shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  
+  body, html {
+    margin: 0; padding: 0;
+    height: 100%; width: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    overflow: hidden;
+    background: #e5e5e5;
+  }
+
+  /* --- FULL SCREEN MAP --- */
+  #map {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 1;
+  }
+
+  /* --- FLOATING UI CONTAINER (TOP) --- */
+  .top-ui {
+    position: absolute;
+    top: 12px; left: 12px; right: 12px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* --- HEADER CARD --- */
+  .header-card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: var(--shadow);
+  }
+  
+  .menu-btn {
+    background: none; border: none;
+    font-size: 24px; color: var(--ink);
+    cursor: pointer; padding: 0; margin-right: 12px;
+  }
+
+  .header-title {
+    flex-grow: 1;
+    font-size: 16px; font-weight: 700; color: var(--ink);
+    margin: 0; line-height: 1.2;
+  }
+
+  .sponsor-mini {
+    text-align: right; font-size: 10px; color: var(--muted);
+    border-left: 1px solid #eee; padding-left: 12px;
+  }
+  .sponsor-mini strong { color: var(--ink); font-size: 12px; }
+
+  /* --- SWIPEABLE FILTER CHIPS (TOP) --- */
+  .filter-container {
+    display: flex; gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 10px; 
+    scrollbar-width: none; 
+  }
+  .filter-container::-webkit-scrollbar { display: none; } 
+
+  .chip {
+    background: var(--bg-chip);
+    border: none; border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 13px; font-weight: 600; color: var(--ink);
+    white-space: nowrap; cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    display: flex; align-items: center; gap: 6px;
+    transition: all 0.2s ease;
+    text-decoration: none;
+  }
+  
+  .chip.active { background: var(--accent); color: #fff; }
+  .chip-shop.active { background: #2e7d32; color: #fff; }
+
+  .chip-kenakata {
+    background: linear-gradient(135deg, #b3202e, #e65100);
+    color: #ffffff;
+    border: 1px solid #ffcc80;
+    box-shadow: 0 2px 8px rgba(230, 81, 0, 0.4);
+  }
+
+  /* --- BOTTOM LEFT FILTERS --- */
+  .bottom-filters {
+    position: absolute;
+    bottom: 72px; 
+    left: 12px;
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap; 
+    max-width: calc(100% - 24px);
+  }
+
+  /* Push map zoom controls up so they don't overlap */
+  .leaflet-bottom.leaflet-left {
+    bottom: 125px;
+  }
+
+  /* --- EXTENDED FAB (FLOATING ACTION BUTTON) --- */
+  .fab-locate {
+    position: absolute;
+    bottom: 135px; right: 16px;
+    height: 46px;
+    padding: 0 16px;
+    background: var(--gold);
+    border: none; border-radius: 23px;
+    color: white; font-size: 13px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    box-shadow: 0 4px 14px rgba(201, 154, 46, 0.4);
+    cursor: pointer; z-index: 1000;
+    transition: transform 0.1s;
+  }
+  .fab-locate:active { transform: scale(0.95); }
+  .fab-icon { display: flex; align-items: center; }
+
+  /* --- STICKY FOOTER --- */
+  .footer-card {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(5px);
+    padding: 12px; text-align: center;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+    z-index: 1000;
+  }
+  .footer-title { font-size: 13px; font-weight: 700; color: var(--ink); margin: 0 0 2px 0; }
+  .footer-credit { font-size: 11px; color: var(--muted); margin: 0; }
+
+  /* --- SIDE MENU (SLIDE IN) --- */
+  .side-menu {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 280px;
+    height: 100%;
+    background: #ffffff;
+    z-index: 2000;
+    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.2);
+    transition: left 0.3s ease;
+    padding: 24px 20px;
+    box-sizing: border-box;
+  }
+  .side-menu.open {
+    left: 0;
+  }
+  .menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1999;
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .menu-overlay.open {
+    display: block;
+    opacity: 1;
+  }
+  .close-btn {
+    background: none;
+    border: none;
+    font-size: 28px;
+    color: var(--ink);
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    cursor: pointer;
+  }
+  .side-menu h2 {
+    margin: 0 0 24px 0;
+    font-size: 18px;
+    color: var(--accent);
+  }
+  .side-menu a {
+    display: block;
+    padding: 12px 0;
+    font-size: 15px;
+    color: var(--ink);
+    text-decoration: none;
+    border-bottom: 1px solid #eee;
+    font-weight: 600;
+    transition: color 0.15s ease;
+  }
+  .side-menu a:hover {
+    color: var(--accent);
+  }
+
+  /* --- LEAFLET POPUP OVERRIDES --- */
+  .puja-popup h3 { margin: 0 0 4px 0; font-size: 15px; }
+  .puja-popup p { margin: 2px 0; font-size: 13px; color: var(--muted); }
+  .puja-popup .sponsored-tag {
+    display: inline-block; background: var(--gold); color: #fff;
+    font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-bottom: 4px;
+  }
+  .puja-popup a.gmaps-btn {
+    display: inline-block; margin-top: 6px; background: var(--accent);
+    color: #fff; text-decoration: none; padding: 8px 12px;
+    border-radius: 6px; font-size: 13px; font-weight: 600; text-align: center;
+  }
+  .metro-label {
+    font-size: 11px; font-weight: 600; color: var(--ink);
+    background: rgba(255,255,255,0.85); padding: 1px 4px;
+    border-radius: 3px; white-space: nowrap; border: none; box-shadow: none;
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDE MENU -->
+<div id="side-menu" class="side-menu">
+  <button id="close-menu" class="close-btn">&times;</button>
+  <h2>Menu</h2>
+  <a href="index.html">🗺️ Interactive Metro Map</a>
+  <a href="puja-list.html">📋 Full Puja List</a>
+  <a href="cultural-events.html">🎭 Cultural Events</a>
+  <a href="dining.html">🍴 Restaurants & Sweet Shops</a>
+  <a href="business.html">🛍️ Shopping & Businesses</a>
+</div>
+<div id="menu-overlay" class="menu-overlay"></div>
+
+<!-- FLOATING UI (TOP) -->
+<div class="top-ui">
+  <!-- Header Card -->
+  <div class="header-card">
+    <button id="hamburger-btn" class="menu-btn">☰</button>
+    <h1 class="header-title">Durga Puja<br>Metro Map</h1>
+    <div class="sponsor-mini">
+      Co-Sponsor<br><strong>[ Logo ]</strong>
+    </div>
+  </div>
+
+  <!-- Swipeable Filter Chips -->
+  <div class="filter-container">
+    <button class="chip active filter-btn" data-filter="all">All</button>
+    <button class="chip filter-btn" data-filter="0-1"><span style="color:#FF0000;">★</span> 0–1 km</button>
+    <button class="chip filter-btn" data-filter="1-3"><span style="color:#00BFFF;">★</span> 1–3 km</button>
+    <button class="chip filter-btn" data-filter="3-5"><span style="color:#C026D3;">★</span> 3–5 km</button>
+  </div>
+</div>
+
+<!-- THE MAP -->
+<div id="map"></div>
+
+<!-- BOTTOM LEFT FILTERS -->
+<div class="bottom-filters">
+  <button class="chip chip-shop toggle-btn" id="toggle-restaurants">🍴 Restaurants</button>
+  <button class="chip chip-shop toggle-btn" id="toggle-shops">🛍️ Bengali Shops</button>
+  <a href="business.html" class="chip chip-kenakata">🛍️ কেনাকাটা!</a>
+</div>
+
+<!-- EXTENDED FAB -->
+<button id="locate-btn" class="fab-locate" title="Find nearest PUBLIC Puja">
+  <span class="fab-icon">
+    <svg width="20" height="20" viewBox="0 0 24 24" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));">
+      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#4285F4"/>
+      <path d="M12 2a7 7 0 00-5 2.15L12 9.5 17 4.15A7 7 0 0012 2z" fill="#EA4335"/>
+      <path d="M5 9a7 7 0 002.15 5L12 9.5 7.15 4.15A7 7 0 005 9z" fill="#FBBC05"/>
+      <path d="M12 9.5l4.85 5.35A7 7 0 0019 9h-7z" fill="#34A853"/>
+      <circle cx="12" cy="9" r="3" fill="#FFFFFF"/>
+    </svg>
+  </span>
+  <span class="fab-text">My Nearest Puja</span>
+</button>
+
+<!-- STICKY FOOTER -->
+<div class="footer-card">
+  <p class="footer-title">🌟 Presented by [Title Sponsor]</p>
+  <p class="footer-credit">Powered by The Urban Nomad Productions</p>
+</div>
+
+<script>
+// UI LOGIC: Side Menu Toggle
+const sideMenu = document.getElementById('side-menu');
+const menuOverlay = document.getElementById('menu-overlay');
+
+document.getElementById('hamburger-btn').addEventListener('click', () => {
+  sideMenu.classList.add('open');
+  menuOverlay.classList.add('open');
+});
+
+document.getElementById('close-menu').addEventListener('click', closeMenu);
+menuOverlay.addEventListener('click', closeMenu);
+
+function closeMenu() {
+  sideMenu.classList.remove('open');
+  menuOverlay.classList.remove('open');
+}
+
+const PUJAS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdq1D4JPdrIFCQaGXT1mMZ9J_Nj7bmx-l82wUpro-WNRfxxIcL5xgFEYom46KZMmNdRsdPGkHNDq99/pub?gid=358032128&single=true&output=csv";
+const SHOPS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdq1D4JPdrIFCQaGXT1mMZ9J_Nj7bmx-l82wUpro-WNRfxxIcL5xgFEYom46KZMmNdRsdPGkHNDq99/pub?gid=1338678170&single=true&output=csv";
+
+// INITIALIZE MAP
+const map = L.map('map', { zoomControl: false }).setView([12.9716, 77.5946], 12);
+L.control.zoom({ position: 'bottomleft' }).addTo(map);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap',
+  maxZoom: 19
+}).addTo(map);
+
+const metroStations = [
+  { name: "Challaghatta", lat: 12.897934, lng: 77.462701, line: "Purple" },
+  { name: "Kengeri", lat: 12.907950, lng: 77.476511, line: "Purple" },
+  { name: "Kengeri Bus Terminal", lat: 12.914900, lng: 77.487589, line: "Purple" },
+  { name: "Pattanagere", lat: 12.924326, lng: 77.498288, line: "Purple" },
+  { name: "Jnanabharathi", lat: 12.935561, lng: 77.512019, line: "Purple" },
+  { name: "Rajarajeshwari Nagar", lat: 12.936662, lng: 77.519593, line: "Purple" },
+  { name: "Pantharapalya - Nayandahalli", lat: 12.941669, lng: 77.525119, line: "Purple" },
+  { name: "Mysuru Road", lat: 12.946727, lng: 77.530074, line: "Purple" },
+  { name: "Deepanjali Nagar", lat: 12.952191, lng: 77.536973, line: "Purple" },
+  { name: "Attiguppe", lat: 12.961954, lng: 77.533589, line: "Purple" },
+  { name: "Vijayanagar", lat: 12.970795, lng: 77.537389, line: "Purple" },
+  { name: "Sri Balagangadharanatha Swamiji Stn. (Hosahalli)", lat: 12.974240, lng: 77.545541, line: "Purple" },
+  { name: "Magadi Road", lat: 12.975633, lng: 77.555500, line: "Purple" },
+  { name: "Krantivira Sangolli Rayanna Railway Station", lat: 12.975841, lng: 77.565756, line: "Purple" },
+  { name: "Nadaprabhu Kempegowda Stn. (Majestic)", lat: 12.975697, lng: 77.572967, line: "Purple" },
+  { name: "Sir M. Visvesvaraya Stn. (Central College)", lat: 12.974345, lng: 77.583998, line: "Purple" },
+  { name: "Dr. B.R. Ambedkar Stn. (Vidhana Soudha)", lat: 12.978793, lng: 77.591752, line: "Purple" },
+  { name: "Cubbon Park", lat: 12.981227, lng: 77.596645, line: "Purple" },
+  { name: "Mahatma Gandhi Road", lat: 12.975505, lng: 77.606762, line: "Purple" },
+  { name: "Trinity", lat: 12.973033, lng: 77.616984, line: "Purple" },
+  { name: "Halasuru", lat: 12.976431, lng: 77.626616, line: "Purple" },
+  { name: "Indiranagar", lat: 12.978318, lng: 77.638731, line: "Purple" },
+  { name: "Swami Vivekananda Road", lat: 12.985950, lng: 77.644930, line: "Purple" },
+  { name: "Baiyappanahalli", lat: 12.990738, lng: 77.652504, line: "Purple" },
+  { name: "Benniganahalli", lat: 12.996531, lng: 77.668461, line: "Purple" },
+  { name: "Krishnarajapura (KR Pura)", lat: 13.000133, lng: 77.677427, line: "Purple" },
+  { name: "Singayyanapalya", lat: 12.996781, lng: 77.692169, line: "Purple" },
+  { name: "Garudacharapalya", lat: 12.993393, lng: 77.703896, line: "Purple" },
+  { name: "Hoodi", lat: 12.988731, lng: 77.711269, line: "Purple" },
+  { name: "Seetharamapalya", lat: 12.980833, lng: 77.708889, line: "Purple" },
+  { name: "Kundalahalli", lat: 12.977701, lng: 77.714957, line: "Purple" },
+  { name: "Nallurhalli", lat: 12.976531, lng: 77.724761, line: "Purple" },
+  { name: "Sri Sathya Sai Hospital", lat: 12.981848, lng: 77.727703, line: "Purple" },
+  { name: "Pattandur Agrahara", lat: 12.987611, lng: 77.738211, line: "Purple" },
+  { name: "Kadugodi Tree Park", lat: 12.985650, lng: 77.746900, line: "Purple" },
+  { name: "Hopefarm Channasandra", lat: 12.987931, lng: 77.754089, line: "Purple" },
+  { name: "Whitefield (Kadugodi)", lat: 12.995893, lng: 77.757784, line: "Purple" },
+  { name: "Madavara", lat: 13.057421, lng: 77.472806, line: "Green" },
+  { name: "Chikkabidarakallu", lat: 13.051944, lng: 77.486389, line: "Green" },
+  { name: "Manjunath Nagar", lat: 13.051260, lng: 77.491400, line: "Green" },
+  { name: "Nagasandra", lat: 13.048020, lng: 77.500112, line: "Green" },
+  { name: "Dasarahalli", lat: 13.043338, lng: 77.512407, line: "Green" },
+  { name: "Jalahalli", lat: 13.039429, lng: 77.519698, line: "Green" },
+  { name: "Peenya Industry", lat: 13.036280, lng: 77.525440, line: "Green" },
+  { name: "Peenya", lat: 13.032815, lng: 77.533227, line: "Green" },
+  { name: "Goraguntepalya", lat: 13.028481, lng: 77.540862, line: "Green" },
+  { name: "Yeshwanthpur", lat: 13.023172, lng: 77.549859, line: "Green" },
+  { name: "Sandal Soap Factory", lat: 13.014698, lng: 77.553933, line: "Green" },
+  { name: "Mahalakshmi", lat: 13.008193, lng: 77.548810, line: "Green" },
+  { name: "Rajajinagar", lat: 13.000334, lng: 77.549701, line: "Green" },
+  { name: "Mahakavi Kuvempu Road", lat: 12.998502, lng: 77.556947, line: "Green" },
+  { name: "Srirampura", lat: 12.996461, lng: 77.563439, line: "Green" },
+  { name: "Mantri Square Sampige Road", lat: 12.990545, lng: 77.570805, line: "Green" },
+  { name: "Nadaprabhu Kempegowda Stn. (Majestic)", lat: 12.975697, lng: 77.572967, line: "Green" },
+  { name: "Chickpet", lat: 12.966660, lng: 77.574678, line: "Green" },
+  { name: "Krishna Rajendra Market", lat: 12.956445, lng: 77.573600, line: "Green" },
+  { name: "National College", lat: 12.950590, lng: 77.573669, line: "Green" },
+  { name: "Lalbagh", lat: 12.946408, lng: 77.580020, line: "Green" },
+  { name: "South End Circle", lat: 12.938377, lng: 77.580096, line: "Green" },
+  { name: "Jayanagar", lat: 12.929641, lng: 77.580160, line: "Green" },
+  { name: "Rashtreeya Vidyalaya Road", lat: 12.921464, lng: 77.580128, line: "Green" },
+  { name: "Banashankari", lat: 12.915649, lng: 77.573588, line: "Green" },
+  { name: "Jaya Prakash Nagar", lat: 12.907382, lng: 77.573213, line: "Green" },
+  { name: "Yelachenahalli", lat: 12.895952, lng: 77.570193, line: "Green" },
+  { name: "Konanakunte Cross", lat: 12.889000, lng: 77.562641, line: "Green" },
+  { name: "Doddakallasandra", lat: 12.884686, lng: 77.552751, line: "Green" },
+  { name: "Vajarahalli", lat: 12.877513, lng: 77.544739, line: "Green" },
+  { name: "Thalaghattapura", lat: 12.871395, lng: 77.538398, line: "Green" },
+  { name: "Silk Institute", lat: 12.861769, lng: 77.529989, line: "Green" },
+  { name: "Rashtreeya Vidyalaya Road", lat: 12.921464, lng: 77.580128, line: "Yellow" },
+  { name: "Ragigudda", lat: 12.917184, lng: 77.588324, line: "Yellow" },
+  { name: "Jayadeva Hospital", lat: 12.916750, lng: 77.599925, line: "Yellow" },
+  { name: "BTM Layout", lat: 12.916584, lng: 77.608238, line: "Yellow" },
+  { name: "Central Silk Board", lat: 12.917232, lng: 77.620291, line: "Yellow" },
+  { name: "Bommanahalli", lat: 12.910661, lng: 77.626569, line: "Yellow" },
+  { name: "Hongasandra", lat: 12.901650, lng: 77.632081, line: "Yellow" },
+  { name: "Kudlu Gate", lat: 12.889919, lng: 77.639289, line: "Yellow" },
+  { name: "Singasandra", lat: 12.880689, lng: 77.644981, line: "Yellow" },
+  { name: "Hosa Road", lat: 12.870781, lng: 77.652481, line: "Yellow" },
+  { name: "Beratena Agrahara", lat: 12.863850, lng: 77.657981, line: "Yellow" },
+  { name: "Electronic City", lat: 12.846489, lng: 77.671119, line: "Yellow" },
+  { name: "Infosys Foundation Konappana Agrahara", lat: 12.856481, lng: 77.663611, line: "Yellow" },
+  { name: "Huskur Road", lat: 12.839011, lng: 77.677539, line: "Yellow" },
+  { name: "Biocon Hebbagodi", lat: 12.829089, lng: 77.681331, line: "Yellow" },
+  { name: "Bommasandra", lat: 12.820364, lng: 77.687470, line: "Yellow" }
+];
+
+const metroLines = [
+  { name: "Purple Line", color: "#7d3c98", path: [[12.897934, 77.462701], [12.902236, 77.469115], [12.902500, 77.469334], [12.904365, 77.470508], [12.906368, 77.472728], [12.907950, 77.476511], [12.910005, 77.481034], [12.910553, 77.484179], [12.912659, 77.485097], [12.914900, 77.487589], [12.916423, 77.489717], [12.918270, 77.490853], [12.921453, 77.493524], [12.923458, 77.497241], [12.924326, 77.498288], [12.928892, 77.503448], [12.929912, 77.505415], [12.931495, 77.506678], [12.935561, 77.512019], [12.936050, 77.514473], [12.936662, 77.519593], [12.937157, 77.520698], [12.939602, 77.523440], [12.941669, 77.525119], [12.943840, 77.526417], [12.946727, 77.530074], [12.948618, 77.535509], [12.950408, 77.537296], [12.952191, 77.536973], [12.954437, 77.535548], [12.956290, 77.534489], [12.960331, 77.533047], [12.961954, 77.533589], [12.970795, 77.537389], [12.972905, 77.538515], [12.973987, 77.541628], [12.974240, 77.545541], [12.974372, 77.548952], [12.973776, 77.550636], [12.975392, 77.552919], [12.975633, 77.555500], [12.975841, 77.565756], [12.976099, 77.569071], [12.975697, 77.572967], [12.975430, 77.575830], [12.973129, 77.581538], [12.974345, 77.583998], [12.975430, 77.586387], [12.978793, 77.591752], [12.981723, 77.594648], [12.981227, 77.596645], [12.979737, 77.600549], [12.976747, 77.601901], [12.975505, 77.606762], [12.973033, 77.616984], [12.972732, 77.618144], [12.972732, 77.620827], [12.974489, 77.624303], [12.976431, 77.626616], [12.977750, 77.627629], [12.978482, 77.629217], [12.978318, 77.638731], [12.978399, 77.639967], [12.979235, 77.640739], [12.984065, 77.640782], [12.985950, 77.644930], [12.990738, 77.652504], [12.996531, 77.668461], [13.000133, 77.677427], [13.000515, 77.680839], [12.999980, 77.686861], [12.998116, 77.689055], [12.996781, 77.692169], [12.995219, 77.696991], [12.993393, 77.703896], [12.992919, 77.709023], [12.991925, 77.713718], [12.990632, 77.713960], [12.988731, 77.711269], [12.986504, 77.708665], [12.985174, 77.708232], [12.980833, 77.708889], [12.978386, 77.709610], [12.977701, 77.714957], [12.976531, 77.724761], [12.976516, 77.726494], [12.976914, 77.727247], [12.981848, 77.727703], [12.984884, 77.729475], [12.987992, 77.733099], [12.987611, 77.738211], [12.987122, 77.742311], [12.985650, 77.746900], [12.984814, 77.749711], [12.984385, 77.751971], [12.984947, 77.752760], [12.987931, 77.754089], [12.995893, 77.757784]] },
+  { name: "Green Line", color: "#1e8449", path: [[13.057421, 77.472806], [13.051944, 77.486389], [13.051260, 77.491400], [13.048020, 77.500112], [13.043338, 77.512407], [13.039429, 77.519698], [13.036280, 77.525440], [13.032815, 77.533227], [13.028481, 77.540862], [13.023172, 77.549859], [13.019036, 77.553236], [13.014698, 77.553933], [13.013330, 77.553964], [13.011201, 77.550475], [13.009782, 77.549018], [13.008193, 77.548810], [13.000334, 77.549701], [12.998179, 77.550313], [12.997809, 77.551450], [12.998601, 77.555022], [12.998502, 77.556947], [12.996772, 77.561482], [12.996461, 77.563439], [12.996438, 77.565993], [12.990545, 77.570805], [12.975697, 77.572967], [12.966660, 77.574678], [12.956445, 77.573600], [12.950590, 77.573669], [12.948360, 77.573627], [12.948342, 77.579744], [12.946408, 77.580020], [12.938377, 77.580096], [12.929641, 77.580160], [12.921464, 77.580128], [12.917528, 77.579942], [12.917646, 77.574146], [12.915649, 77.573588], [12.907382, 77.573213], [12.901378, 77.573357], [12.895952, 77.570193], [12.889000, 77.562641], [12.888067, 77.561431], [12.884686, 77.552751], [12.883245, 77.547563], [12.877513, 77.544739], [12.874045, 77.540857], [12.871395, 77.538398], [12.863424, 77.531601], [12.861769, 77.529989]] },
+  { name: "Yellow Line", color: "#f1c40f", path: [[12.921464, 77.580128], [12.917301, 77.580135], [12.917184, 77.588324], [12.916750, 77.599925], [12.916584, 77.608238], [12.916433, 77.612189], [12.917232, 77.620291], [12.916640, 77.623113], [12.910661, 77.626569], [12.901650, 77.632081], [12.889919, 77.639289], [12.880689, 77.644981], [12.870781, 77.652481], [12.863850, 77.657981], [12.846489, 77.671119], [12.856481, 77.663611], [12.839011, 77.677539], [12.837849, 77.678437], [12.829089, 77.681331], [12.824505, 77.683505], [12.820364, 77.687470]] }
+];
+
+const stationLabelMarkers = [];
+metroStations.forEach(station => {
+  const lineDotColors = { "Purple": "#7d3c98", "Green": "#1e8449", "Yellow": "#f1c40f" };
+  const marker = L.circleMarker([station.lat, station.lng], {
+    radius: 5, color: lineDotColors[station.line] || "#888", fillColor: lineDotColors[station.line] || "#888", fillOpacity: 1, weight: 2
+  }).addTo(map);
+
+  marker.bindTooltip(station.name, { permanent: true, direction: "top", className: "metro-label", offset: [0, -6] });
+  stationLabelMarkers.push(marker);
+});
+
+function updateStationLabelVisibility() {
+  const shouldShow = map.getZoom() >= 14;
+  stationLabelMarkers.forEach(marker => shouldShow ? marker.openTooltip() : marker.closeTooltip());
+}
+map.on('zoomend', updateStationLabelVisibility);
+updateStationLabelVisibility();
+
+metroLines.forEach(line => L.polyline(line.path, { color: line.color, weight: 4, opacity: 0.8 }).addTo(map));
+
+const allPujasData = [];
+const layerGroups = { "0-1": L.layerGroup(), "1-3": L.layerGroup(), "3-5": L.layerGroup(), ">5": L.layerGroup() };
+const categoryColors = { "0-1": "#FF0000", "1-3": "#00BFFF", "3-5": "#C026D3", ">5": "#000000" };
+
+function createStarIcon(color, sponsored) {
+  const size = sponsored ? 32 : 26;
+  const strokeColor = sponsored ? "#c99a2e" : "#ffffff";
+  const strokeWidth = sponsored ? 2.5 : 1.2;
+  return L.divIcon({
+    html: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));"><polygon points="12,2 15,9.5 22,9.5 16.2,14.2 18.3,22 12,17.5 5.7,22 7.8,14.2 2,9.5 9,9.5" fill="${color}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-linejoin="round"/></svg>`,
+    className: "", iconSize: [size, size], iconAnchor: [size / 2, size / 2]
+  });
+}
+
+function createForkKnifeIcon(sponsored) {
+  const size = sponsored ? 32 : 26;
+  const strokeColor = sponsored ? "#c99a2e" : "none";
+  return L.divIcon({
+    html: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));"><circle cx="12" cy="12" r="11" fill="#333" stroke="${strokeColor}" stroke-width="${sponsored?2.5:0}"/><path d="M8 4v6M9 4v6M10 4v6" stroke="#fff" stroke-width="0.8" stroke-linecap="round"/><path d="M9 10v10" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/><path d="M15.5 4c1.2 0 1.8 1.5 1.8 3c0 1.8-.9 3-1.8 3v10" stroke="#fff" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    className: "", iconSize: [size, size], iconAnchor: [size / 2, size / 2]
+  });
+}
+
+function createShoppingBagIcon(sponsored) {
+  const size = sponsored ? 32 : 26;
+  const strokeColor = sponsored ? "#c99a2e" : "none";
+  return L.divIcon({
+    html: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));"><circle cx="12" cy="12" r="11" fill="#8e44ad" stroke="${strokeColor}" stroke-width="${sponsored?2.5:0}"/><path d="M7 9h10l-.8 9.5a1.5 1.5 0 01-1.5 1.4h-5.4a1.5 1.5 0 01-1.5-1.4z" fill="#fff" stroke="#8e44ad" stroke-width="0.6"/><path d="M9 9v-1.5a3 3 0 016 0v1.5" fill="none" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/></svg>`,
+    className: "", iconSize: [size, size], iconAnchor: [size / 2, size / 2]
+  });
+}
+
+const restaurantLayer = L.layerGroup();
+const shopLayer = L.layerGroup();
+
+function getField(row, keyName) {
+  const target = keyName.toLowerCase().replace(/\s+/g, '');
+  for (const k of Object.keys(row)) {
+    if (k.toLowerCase().replace(/\s+/g, '') === target) {
+      const v = row[k];
+      return (v !== undefined && v !== null) ? String(v).trim() : '';
+    }
+  }
+  return '';
+}
+
+function parseGPS(coordString) {
+  if (!coordString) return null;
+  const parts = coordString.split(',');
+  if (parts.length === 2 && !isNaN(parseFloat(parts[0])) && !isNaN(parseFloat(parts[1]))) return [parseFloat(parts[0].trim()), parseFloat(parts[1].trim())];
+  const match = coordString.match(/(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
+  if (match) return [parseFloat(match[1]), parseFloat(match[2])];
+  return null;
+}
+
+// FETCH PUJAS
+Papa.parse(PUJAS_CSV_URL, {
+  download: true, header: true, skipEmptyLines: true,
+  complete: function(results) {
+    results.data.forEach(row => {
+      const coords = parseGPS(getField(row, 'GPS Coordinates'));
+      if (!coords) return;
+      
+      const rawDist = getField(row, 'Distance from Metro');
+      let category = ">5";
+      if (rawDist.includes("0-1") || rawDist.includes("0–1")) category = "0-1";
+      else if (rawDist.includes("1-3") || rawDist.includes("1–3")) category = "1-3";
+      else if (rawDist.includes("3-5") || rawDist.includes("3–5")) category = "3-5";
+
+      const isSponsored = getField(row, 'Sponsored').toLowerCase() === 'yes'; 
+      const marker = L.marker(coords, { icon: createStarIcon(categoryColors[category], isSponsored) });
+      const gmapsLink = `https://www.google.com/maps/search/?api=1&query=${coords[0]},${coords[1]}`;
+      const metroStationText = getField(row, 'Nearest Metro Station');
+      const nearText = category === ">5" ? "No Nearby Metro Station" : `${metroStationText ? metroStationText + ' ' : ''}(${category} km)`;
+      const eventType = getField(row, 'Public or Apartment Event');
+
+      allPujasData.push({ name: getField(row, 'Puja Name'), latlng: L.latLng(coords[0], coords[1]), marker: marker, type: eventType });
+
+      marker.bindPopup(`
+        <div class="puja-popup">
+          ${isSponsored ? '<span class="sponsored-tag">SPONSORED</span>' : ''}
+          <h3>${getField(row, 'Puja Name')}</h3>
+          ${eventType ? `<p><strong>Type:</strong> ${eventType}</p>` : ''}
+          <p>Near Metro: ${nearText}</p>
+          ${getField(row, 'Area') ? `<p>Area: ${getField(row, 'Area')}</p>` : ''}
+          <a class="gmaps-btn" href="${gmapsLink}" target="_blank">Open in Google Maps →</a>
+        </div>
+      `);
+      
+      if (layerGroups[category]) marker.addTo(layerGroups[category]);
+    });
+    Object.values(layerGroups).forEach(group => group.addTo(map));
+  }
+});
+
+// FETCH SHOPS & RESTAURANTS
+Papa.parse(SHOPS_CSV_URL, {
+  download: true, header: true, skipEmptyLines: true,
+  complete: function(results) {
+    results.data.forEach(row => {
+      const coords = parseGPS(getField(row, 'GPS Coordinates'));
+      const onTheMap = getField(row, 'On the Map').toLowerCase();
+      if (!coords || onTheMap === 'no') return;
+
+      const category = getField(row, 'Category').toLowerCase();
+      const isSponsored = getField(row, 'Sponsored').toLowerCase() === 'yes';
+      const physicalStore = getField(row, 'Physical Store').toLowerCase();
+      const address = getField(row, 'Full Address');
+
+      const foodCategories = ['restaurant', 'sweet shop', 'sweet', 'cafe', 'food', 'catering', 'cloud kitchen'];
+      const isFood = foodCategories.some(c => category.includes(c));
+
+      // Strict physical check for retail/bengali shops
+      const isPhysicalShop = physicalStore !== 'no' && address !== '';
+
+      const marker = L.marker(coords, { icon: isFood ? createForkKnifeIcon(isSponsored) : createShoppingBagIcon(isSponsored) });
+      marker.bindPopup(`
+        <div class="puja-popup">
+          ${isSponsored ? '<span class="sponsored-tag">SPONSORED</span>' : ''}
+          <h3>${getField(row, 'Business Name')}</h3>
+          <p><strong>${getField(row, 'Category')}</strong></p>
+          <p>${getField(row, 'Business Description') || ''}</p>
+          ${getField(row, 'Website or Social Link') ? `<a class="gmaps-btn" href="${getField(row, 'Website or Social Link')}" target="_blank">Visit Link →</a>` : ''}
+        </div>
+      `);
+
+      if (isFood) {
+        marker.addTo(restaurantLayer);
+      } else if (isPhysicalShop) {
+        marker.addTo(shopLayer);
+      }
+    });
+  }
+});
+
+// BUTTON TOGGLES
+document.getElementById('toggle-restaurants').addEventListener('click', function() {
+  const isActive = this.classList.toggle('active');
+  isActive ? restaurantLayer.addTo(map) : map.removeLayer(restaurantLayer);
+});
+
+document.getElementById('toggle-shops').addEventListener('click', function() {
+  const isActive = this.classList.toggle('active');
+  isActive ? shopLayer.addTo(map) : map.removeLayer(shopLayer);
+});
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const filter = btn.dataset.filter;
+    Object.entries(layerGroups).forEach(([key, group]) => {
+      map.removeLayer(group);
+      if (filter === 'all' || filter === key) group.addTo(map);
+    });
+  });
+});
+
+// GEOLOCATION FAB
+let nearestLine = null;
+document.getElementById('locate-btn').addEventListener('click', () => {
+  if (!navigator.geolocation) return alert("Your browser doesn't support location services.");
+  const btn = document.getElementById('locate-btn');
+  const originalText = btn.innerHTML;
+  btn.innerHTML = "<span class='fab-text'>⏳ Locating...</span>";
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      btn.innerHTML = originalText; 
+      const userLatLng = L.latLng(position.coords.latitude, position.coords.longitude);
+      
+      L.marker(userLatLng, {
+        icon: L.divIcon({ html: '<div style="font-size:26px; filter: drop-shadow(0px 3px 4px rgba(0,0,0,0.5));">📍</div>', className: "", iconSize: [26, 26], iconAnchor: [13, 26] })
+      }).addTo(map);
+
+      if (allPujasData.length === 0) return map.setView(userLatLng, 15);
+
+      let nearestPuja = null; let minDistance = Infinity; 
+      allPujasData.forEach(puja => {
+        if (puja.type && puja.type.toLowerCase().includes('public')) {
+          const distance = map.distance(userLatLng, puja.latlng);
+          if (distance < minDistance) { minDistance = distance; nearestPuja = puja; }
+        }
+      });
+
+      if (nearestPuja) {
+        document.querySelector('.filter-btn[data-filter="all"]').click();
+        if (nearestLine) map.removeLayer(nearestLine);
+        nearestLine = L.polyline([userLatLng, nearestPuja.latlng], { color: '#b3202e', weight: 4, dashArray: '8, 8', opacity: 0.9 }).addTo(map);
+        map.fitBounds(L.latLngBounds([userLatLng, nearestPuja.latlng]), { padding: [80, 80] });
+        nearestPuja.marker.openPopup();
+        setTimeout(() => alert(`The nearest PUBLIC Durga Puja is ${nearestPuja.name}, exactly ${(minDistance/1000).toFixed(1)} km away!`), 600);
+      } else { alert("We couldn't find any Public Pujas nearby!"); }
+    },
+    (error) => { btn.innerHTML = originalText; alert("Couldn't get your location."); }
+  );
+});
+</script>
+</body>
+</html>

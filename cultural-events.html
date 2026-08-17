@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Bangalore Durga Puja Cultural Events 2026</title>
+
+<!-- Load PapaParse for reading Google Sheets CSVs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+
+<style>
+  :root {
+    --ink: #2b1b12;
+    --accent: #b3202e;   
+    --gold: #c99a2e;
+    --muted: #7a6a5f;
+    --bg: #e5e5e5;
+    --card-bg: #ffffff;
+    --shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  
+  html { scroll-behavior: smooth; } /* Smooth scrolling for anchor links */
+  
+  body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    padding-bottom: 70px;
+  }
+
+  /* --- TOP UI & HEADER --- */
+  .top-ui {
+    position: sticky;
+    top: 0; left: 0; right: 0;
+    z-index: 1000;
+    padding: 12px;
+    background: var(--bg);
+  }
+
+  .header-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: var(--shadow);
+  }
+  
+  .menu-btn { background: none; border: none; font-size: 24px; color: var(--ink); cursor: pointer; padding: 0; margin-right: 12px; }
+  .header-title { flex-grow: 1; font-size: 16px; font-weight: 700; color: var(--ink); margin: 0; line-height: 1.2; }
+  .nav-btn-group { display: flex; gap: 6px; }
+  .nav-btn { font-size: 11px; font-weight: 600; color: #fff; background: var(--accent); padding: 6px 10px; border-radius: 16px; text-decoration: none; white-space: nowrap; }
+  .nav-btn.secondary { background: var(--muted); }
+
+  /* --- PUJA WALL CONTAINER --- */
+  .events-grid {
+    padding: 0 12px 12px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .puja-wall {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 20px 16px;
+    box-shadow: var(--shadow);
+    border: 2px solid #eaeaea;
+    scroll-margin-top: 80px; /* Prevents the sticky header from covering the wall when jumped to */
+  }
+
+  /* Highlight Animation when linked from Directory! */
+  .puja-wall:target {
+    animation: targetPulse 2s ease-out;
+  }
+  @keyframes targetPulse {
+    0% { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(179, 32, 46, 0.4); }
+    100% { border-color: #eaeaea; box-shadow: var(--shadow); }
+  }
+
+  .wall-header {
+    display: flex; justify-content: space-between; align-items: center; margin: 0 0 20px 0; padding-bottom: 12px; border-bottom: 2px dashed #eee; flex-wrap: wrap; gap: 12px;
+  }
+  .wall-title { font-size: 20px; color: var(--ink); margin: 0; }
+
+  .gmaps-btn {
+    background: #e3f2fd; color: #0d47a1; text-decoration: none; padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s;
+  }
+
+  /* --- ARTIST CARDS GRID --- */
+  .wall-cards-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+  .artist-card { background: #ffffff; border: 1px solid #eaeaea; border-radius: 12px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); display: flex; flex-direction: column; }
+  .artist-img-wrapper { display: flex; justify-content: center; margin-bottom: 16px; }
+  .artist-avatar { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent); padding: 2px; background: #fff; }
+  .artist-avatar-fallback { width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--accent); background: #fdfaf7; display: flex; align-items: center; justify-content: center; font-size: 36px; }
+  
+  .details-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+  .perf-type { color: #8B0000; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+  .artist-name { font-size: 18px; font-weight: 800; color: #111; margin: 0; }
+  .card-divider { height: 1px; background: #eeeeee; margin: 12px 0; }
+  .badges-bottom { display: flex; gap: 8px; flex-wrap: wrap; }
+  .badge-styled { padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+  .badge-open { background: #e8f5e9; color: #2e7d32; }
+  .badge-restricted { background: #ffebee; color: #c2185b; }
+  .badge-date { background: #f3e5f5; color: #4a148c; }
+  .badge-time { background: #e3f2fd; color: #0d47a1; }
+
+  /* --- STICKY FOOTER --- */
+  .footer-card { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(5px); padding: 10px; text-align: center; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 1000; }
+  .footer-title { font-size: 12px; font-weight: 700; color: var(--ink); margin: 0 0 2px 0; }
+  .footer-credit { font-size: 10px; color: var(--muted); margin: 0; }
+
+  /* --- SIDE MENU --- */
+  .side-menu { position: fixed; top: 0; left: -280px; width: 280px; height: 100%; background: #fff; z-index: 2000; box-shadow: 2px 0 12px rgba(0,0,0,0.2); transition: left 0.3s ease; padding: 24px 20px; }
+  .side-menu.open { left: 0; }
+  .menu-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1999; display: none; opacity: 0; transition: opacity 0.3s ease; }
+  .menu-overlay.open { display: block; opacity: 1; }
+  .close-btn { background: none; border: none; font-size: 28px; color: var(--ink); position: absolute; top: 16px; right: 20px; cursor: pointer; }
+  .side-menu h2 { margin: 0 0 24px 0; font-size: 18px; color: var(--accent); }
+  .side-menu a { display: block; padding: 12px 0; font-size: 16px; color: var(--ink); text-decoration: none; border-bottom: 1px solid #eee; font-weight: 500; }
+  #loading-state { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div id="side-menu" class="side-menu">
+  <button id="close-menu" class="close-btn">&times;</button>
+  <h2>Menu</h2>
+  <a href="index.html">🗺️ Interactive Metro Map</a>
+  <a href="puja-list.html">📋 Full Puja List</a>
+  <a href="cultural-events.html">🎭 Cultural Events</a>
+</div>
+<div id="menu-overlay" class="menu-overlay"></div>
+
+<div class="top-ui">
+  <div class="header-card">
+    <button id="hamburger-btn" class="menu-btn">☰</button>
+    <h1 class="header-title">Cultural Events</h1>
+    <div class="nav-btn-group">
+      <a href="puja-list.html" class="nav-btn secondary">Directory</a>
+      <a href="index.html" class="nav-btn">Map View</a>
+    </div>
+  </div>
+</div>
+
+<div id="events-container" class="events-grid">
+  <div id="loading-state">⏳ Loading artists and routing data...</div>
+</div>
+
+<div class="footer-card">
+  <p class="footer-title">🌟 Presented by [Title Sponsor]</p>
+  <p class="footer-credit">Powered by The Urban Nomad Productions</p>
+</div>
+
+<script>
+const sideMenu = document.getElementById('side-menu');
+const menuOverlay = document.getElementById('menu-overlay');
+document.getElementById('hamburger-btn').addEventListener('click', () => { sideMenu.classList.add('open'); menuOverlay.classList.add('open'); });
+document.getElementById('close-menu').addEventListener('click', closeMenu);
+menuOverlay.addEventListener('click', closeMenu);
+function closeMenu() { sideMenu.classList.remove('open'); menuOverlay.classList.remove('open'); }
+
+const PUJA_DIR_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdq1D4JPdrIFCQaGXT1mMZ9J_Nj7bmx-l82wUpro-WNRfxxIcL5xgFEYom46KZMmNdRsdPGkHNDq99/pub?gid=358032128&single=true&output=csv"; 
+const EVENTS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdq1D4JPdrIFCQaGXT1mMZ9J_Nj7bmx-l82wUpro-WNRfxxIcL5xgFEYom46KZMmNdRsdPGkHNDq99/pub?gid=265761171&single=true&output=csv"; 
+
+// Helper function to slugify names for anchor links
+function slugify(text) {
+  return text.toString().toLowerCase().trim()
+    .replace(/\s+/g, '-')       // Replace spaces with -
+    .replace(/[^\w\-]+/g, '')   // Remove all non-word chars
+    .replace(/\-\-+/g, '-');    // Replace multiple - with single -
+}
+
+function fetchCSV(url) {
+  return new Promise((resolve, reject) => {
+    Papa.parse(url, { download: true, header: true, skipEmptyLines: true, complete: (results) => resolve(results.data), error: (err) => reject(err) });
+  });
+}
+
+Promise.all([fetchCSV(PUJA_DIR_CSV_URL), fetchCSV(EVENTS_CSV_URL)])
+  .then(([dirData, eventsData]) => {
+    const locationMap = {};
+    dirData.forEach(row => {
+      const name = (row['Puja Name'] || '').trim();
+      if (name) { locationMap[name] = { coords: (row['GPS Coordinates'] || '').trim(), address: (row['Full Address'] || '').trim() }; }
+    });
+    renderEvents(eventsData, locationMap);
+  })
+  .catch(err => { document.getElementById('events-container').innerHTML = `<div id="loading-state" style="color:red;">Error loading events data.</div>`; });
+
+
+function renderEvents(events, locationMap) {
+  const container = document.getElementById('events-container');
+  const validEvents = events.filter(row => (row['Puja Name'] || '').trim() !== '' || (row['Artist Name'] || '').trim() !== '');
+
+  if (!validEvents || validEvents.length === 0) {
+    container.innerHTML = `<div id="loading-state">No cultural events listed at the moment. Check back soon!</div>`;
+    return;
+  }
+
+  const groupedEvents = {};
+  validEvents.forEach(row => {
+    const pujaName = (row['Puja Name'] || 'Other Events').trim();
+    if (!groupedEvents[pujaName]) groupedEvents[pujaName] = [];
+    groupedEvents[pujaName].push(row);
+  });
+
+  let htmlOutput = '';
+
+  for (const [pujaName, artists] of Object.entries(groupedEvents)) {
+    let gmapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(pujaName + ' Bangalore')}`;
+    if (locationMap[pujaName]) {
+      const coords = locationMap[pujaName].coords.replace(/\s+/g, '');
+      const address = locationMap[pujaName].address;
+      if (coords && coords.includes(',')) gmapsLink = `https://www.google.com/maps/search/?api=1&query=${coords}`;
+      else if (address) gmapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(pujaName + ' ' + address + ' Bangalore')}`;
+    }
+
+    // Notice the ID added here utilizing our slugify function!
+    htmlOutput += `
+      <div class="puja-wall" id="${slugify(pujaName)}">
+        <div class="wall-header">
+          <h2 class="wall-title">${pujaName}</h2>
+          <a class="gmaps-btn" href="${gmapsLink}" target="_blank">📍 Get Directions</a>
+        </div>
+        <div class="wall-cards-container">
+    `;
+
+    artists.forEach(row => {
+      const artistName = (row['Artist Name'] || '').trim();
+      const perfType = (row['Performance Type'] || '').trim();
+      const day = (row['Day'] || '').trim();
+      const date = (row['Date'] || '').trim();
+      const time = (row['Time'] || '').trim();
+      const openToPublic = (row['Open to Public'] || '').trim().toLowerCase();
+      const imageUrl = (row['Artist Image URL'] || '').trim();
+
+      const isOpen = openToPublic === 'yes' || openToPublic === 'true';
+      const imageBlock = imageUrl ? `<img src="${imageUrl}" alt="${artistName}" class="artist-avatar" onerror="this.style.display='none'">` : `<div class="artist-avatar-fallback">🎭</div>`;
+      const accessBadge = isOpen ? `<span class="badge-styled badge-open">🔓 Open to All</span>` : `<span class="badge-styled badge-restricted">🔒 Restricted</span>`;
+      const dateStr = [day, date].filter(Boolean).join(', ');
+
+      htmlOutput += `
+          <div class="artist-card">
+            <div class="artist-img-wrapper">${imageBlock}</div>
+            <div class="details-top"><div class="perf-type">${perfType}</div>${accessBadge}</div>
+            <h3 class="artist-name">${artistName}</h3>
+            <div class="card-divider"></div>
+            <div class="badges-bottom">
+              ${dateStr ? `<span class="badge-styled badge-date">🗓️ ${dateStr}</span>` : ''}
+              ${time ? `<span class="badge-styled badge-time">⏰ ${time}</span>` : ''}
+            </div>
+          </div>
+      `;
+    });
+    htmlOutput += `</div></div>`;
+  }
+  container.innerHTML = htmlOutput;
+
+  if (window.location.hash) {
+  const targetElement = document.querySelector(window.location.hash);
+  if (targetElement) {
+    setTimeout(() => {
+      targetElement.scrollIntoView({ behavior: 'smooth' });
+    }, 200); // 200ms delay to let the browser paint the new DOM elements
+  }
+}
+}
+</script>
+
+</body>
+</html>
